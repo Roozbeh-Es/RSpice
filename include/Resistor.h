@@ -17,7 +17,7 @@ public:
 
     void stamp() override;
 
-    ~Resistor() final;
+    ~Resistor() final = default;
 
 private:
     double resistance_;

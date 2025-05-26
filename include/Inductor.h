@@ -10,7 +10,7 @@ public:
     Inductor(std::string name, std::string node1Name, std::string node2Name, int node1,
             int node2, double inductance) : Element(std::move(name), std::move(node1Name), std::move(node2Name), node1, node2), inductance_(inductance) {}
 
-    ~Inductor() final;
+    ~Inductor() final = default;
 
     [[nodiscard]] std::string getType() const override { return "Inductor"; }
 
