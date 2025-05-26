@@ -1,0 +1,8 @@
+//
+// Created by rouzb on 5/26/2025.
+//
+
+#ifndef ABSTRACTCURRENTSOURCE_H
+#define ABSTRACTCURRENTSOURCE_H
+
+#endif //ABSTRACTCURRENTSOURCE_H
