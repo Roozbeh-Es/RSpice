@@ -1,3 +1,5 @@
-//
-// Created by rouzb on 5/25/2025.
-//
+#include <iostream>
+
+int main() {
+    std::cout << "Hello Project!" << std::endl;
+}
