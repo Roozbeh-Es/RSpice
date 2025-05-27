@@ -13,6 +13,10 @@ public:
 
     void stamp() override;
 
+    bool isLinear() override {
+        return false;
+    }
+
 private:
     double capacitance_;
 };

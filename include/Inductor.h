@@ -16,6 +16,10 @@ public:
 
     void stamp() override;
 
+    bool isLinear() override {
+        return false;
+    }
+
 private:
     double inductance_;
 };

@@ -14,5 +14,11 @@ public:
     std::string getType() const override {
         return "DC Voltage Source";
     }
+
+    void stamp() override;
+
+    bool isLinear() override {
+        return true;
+    }
 };
 #endif //DCVOLTAGESOURCE_H

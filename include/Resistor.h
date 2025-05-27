@@ -19,6 +19,10 @@ public:
 
     ~Resistor() final = default;
 
+    bool isLinear() override {
+        return true;
+    }
+
 private:
     double resistance_;
 };
