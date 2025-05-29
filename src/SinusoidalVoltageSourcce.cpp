@@ -1,1 +1,1 @@
-#include "SinusiodalVoltageSource.h"
+#include "SinusoidalVoltageSource.h"

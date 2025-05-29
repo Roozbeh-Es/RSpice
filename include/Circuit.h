@@ -14,7 +14,7 @@
 #include "Inductor.h"
 #include "AbstractCurrentSource.h"
 #include "AbstractVoltageSource.h"
-#include "SinusiodalVoltageSource.h"
+#include "SinusoidalVoltageSource.h"
 #include "SinusoidalCurrentSource.h"
 #include "DCCurrentSource.h"
 #include "DCVoltageSource.h"
@@ -47,6 +47,14 @@ public:
         return numInductors_;
     }
 
+     std::vector<std::unique_ptr<Element>>& getElements()  {
+        return elements_;
+    }
+
+    [[nodiscard]] const std::vector<std::unique_ptr<Element>>& getElements() const {
+        return elements_;
+    }
+
 private:
     std::vector<std::unique_ptr<Element> > elements_;
     std::map<std::string, int> nodeNameToIndex_;
@@ -54,6 +62,7 @@ private:
     int numVoltageSources_;
     int numInductors_;
     int numEquations_;
+    SUNContext suncntx_;
 };
 
 

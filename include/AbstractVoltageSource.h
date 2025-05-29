@@ -5,7 +5,8 @@
 
 class AbstractVoltageSource : public Element {
 protected:
-    int voltageSourceCurrentIndex_;
+    int voltageSourceEquationIndex_;
+
 public:
     AbstractVoltageSource(std::string name, std::string node1Name, std::string node2Name, int node1,
                           int node2) : Element(std::move(name), std::move(node1Name), std::move(node2Name), node1,
@@ -19,6 +20,14 @@ public:
     }
 
     void ResidualStamp(sunrealtype t, N_Vector y, N_Vector yp, N_Vector F_Residual) override;
+
+    [[nodiscard]] int getVoltageSourceCurrentIndex() const {
+        return voltageSourceEquationIndex_;
+    }
+
+    //y is for dependencies for the dependent sources that we will add later on
+    virtual sunrealtype getVoltage(sunrealtype t, N_Vector y) const = 0;
+
 };
 
 

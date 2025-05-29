@@ -6,7 +6,7 @@
 class Inductor : public Element {
 private:
     double inductance_;
-    int InductorCurrentIndex_;
+    int inductorEquationIndex_;
 
 public:
     Inductor();
@@ -25,6 +25,11 @@ public:
     bool isLinear() override {
         return true;
     }
+
+    [[nodiscard]] int getInductorIndex() const {
+        return inductorEquationIndex_;
+    }
+
 };
 
 
