@@ -14,7 +14,7 @@ public:
     void stamp() override;
 
     bool isLinear() override {
-        return false;
+        return true;
     }
 
 private:

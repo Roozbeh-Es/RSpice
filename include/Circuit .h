@@ -18,6 +18,15 @@
 #include "SinusoidalCurrentSource.h"
 #include "DCCurrentSource.h"
 #include "DCVoltageSource.h"
+#include <iostream>
+#include <cmath>
+#include <string>
+#include <ida/ida.h>
+#include <nvector/nvector_serial.h>
+#include <sunmatrix/sunmatrix_dense.h>
+#include <sunlinsol/sunlinsol_dense.h>
+#include <sundials/sundials_types.h>
+#include <sundials/sundials_context.h>
 
 enum class AnalysisType {
     DC,
@@ -31,13 +40,14 @@ public:
 
     ~Circuit();
 
-    void loadComponents(std::vector<std::unique_ptr<Element> > CircuitComponents, const std::map<std::string, int>& initialNodeMap );
+    void loadComponents(std::vector<std::unique_ptr<Element> > CircuitComponents, const std::map<std::string, int>& initialNodeMap);
 
-    void buildMNAMatrix(Matrix& G, Matrix& B, Matrix& C, Matrix& D, Vector& J, Vector& E, double timeStep = 0.0);
+    void prepareForSimulation();
+
 
 private:
-    std::vector<std::unique_ptr<Element> > elements;
-    std::map<std::string, int> nodeNameToIndex;
+    std::vector<std::unique_ptr<Element> > elements_;
+    std::map<std::string, int> nodeNameToIndex_;
     int numNodes_;
     int numVoltageSources_;
     double time_;

@@ -16,8 +16,8 @@ public:
     ~Vector() = default;
     Vector& operator=(const Vector& other);
 
-    double& operator[](int i);
-    const double& operator[](int i) const;
+    double& operator()(int i);
+    const double& operator()(int i) const;
 
     [[nodiscard]] int getSize() const;
 
