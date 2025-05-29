@@ -14,7 +14,7 @@ public:
 
     ~DCCurrentSource() override final = default;
 
-    void stamp() override;
+    void ResidualStamp() override;
 
     bool isLinear() override {
         return false;

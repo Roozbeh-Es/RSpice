@@ -14,7 +14,7 @@ public:
 
     SinusoidalCurrentSource(double amplitude, double frequency, double offset);
 
-    void stamp() override;
+    void ResidualStamp() override;
 
     bool isLinear() override {
         return false;

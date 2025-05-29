@@ -28,12 +28,6 @@
 #include <sundials/sundials_types.h>
 #include <sundials/sundials_context.h>
 
-enum class AnalysisType {
-    DC,
-    TRANSIENT,
-    AC_SWEEP,
-};
-
 class Circuit {
 public:
     Circuit();
@@ -43,7 +37,6 @@ public:
     void loadComponents(std::vector<std::unique_ptr<Element> > CircuitComponents, const std::map<std::string, int>& initialNodeMap);
 
     void prepareForSimulation();
-
 
 private:
     std::vector<std::unique_ptr<Element> > elements_;

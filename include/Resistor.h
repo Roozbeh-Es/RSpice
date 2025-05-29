@@ -15,7 +15,7 @@ public:
 
     [[nodiscard]] std::string getType() const override { return "Resistor"; }
 
-    void stamp() override;
+    void ResidualStamp() override;
 
     ~Resistor() final = default;
 

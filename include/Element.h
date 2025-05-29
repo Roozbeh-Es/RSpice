@@ -22,7 +22,7 @@ public:
 
     [[nodiscard]] virtual bool isLinear() { return true; }
 
-    virtual void stamp();
+    virtual void ResidualStamp();
 
 protected:
     std::string name_;

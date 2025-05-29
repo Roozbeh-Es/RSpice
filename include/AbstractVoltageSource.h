@@ -18,7 +18,7 @@ public:
         return "Abstract Voltage Source";
     }
 
-    void stamp() override;
+    void ResidualStamp() override;
 };
 
 

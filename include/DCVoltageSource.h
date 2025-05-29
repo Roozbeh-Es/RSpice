@@ -15,7 +15,7 @@ public:
         return "DC Voltage Source";
     }
 
-    void stamp() override;
+    void ResidualStamp() override;
 
     bool isLinear() override {
         return true;

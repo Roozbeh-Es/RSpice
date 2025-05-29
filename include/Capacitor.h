@@ -11,7 +11,7 @@ public:
 
     ~Capacitor() final;
 
-    void stamp() override;
+    void ResidualStamp() override;
 
     bool isLinear() override {
         return true;
