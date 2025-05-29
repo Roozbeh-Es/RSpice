@@ -12,13 +12,13 @@ public:
                                                node2) {
     }
 
-    virtual ~AbstractVoltageSource() override = default;
+    ~AbstractVoltageSource() override = default;
 
-    std::string getType() const override {
+    [[nodiscard]] std::string getType() const override {
         return "Abstract Voltage Source";
     }
 
-    void ResidualStamp() override;
+    void ResidualStamp(sunrealtype t, N_Vector y, N_Vector yp, N_Vector F_Residual) override;
 };
 
 

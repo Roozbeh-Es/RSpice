@@ -13,7 +13,7 @@ public:
     SinusoidalVoltageSource();
     SinusoidalVoltageSource(double amplitude, double frequency);
 
-    void ResidualStamp() override;
+    void ResidualStamp(sunrealtype t, N_Vector y, N_Vector yp, N_Vector F_Residual) override;
 
     std::string getType() const override {
         return "Sinusoidal Voltage Source";

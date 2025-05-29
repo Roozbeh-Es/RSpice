@@ -1,6 +1,14 @@
 #ifndef ELEMENT_H
 #define ELEMENT_H
+#include <iostream>
+#include <cmath>
 #include <string>
+#include <ida/ida.h>
+#include <nvector/nvector_serial.h>
+#include <sunmatrix/sunmatrix_dense.h>
+#include <sunlinsol/sunlinsol_dense.h>
+#include <sundials/sundials_types.h>
+#include <sundials/sundials_context.h>
 
 class Element {
 public:
@@ -22,7 +30,7 @@ public:
 
     [[nodiscard]] virtual bool isLinear() { return true; }
 
-    virtual void ResidualStamp();
+    virtual void ResidualStamp(sunrealtype t, N_Vector y, N_Vector yp, N_Vector F_Residual) = 0;
 
 protected:
     std::string name_;

@@ -15,7 +15,7 @@ public:
         return "DC Voltage Source";
     }
 
-    void ResidualStamp() override;
+    void ResidualStamp(sunrealtype t, N_Vector y, N_Vector yp, N_Vector F_Residual) override;
 
     bool isLinear() override {
         return true;

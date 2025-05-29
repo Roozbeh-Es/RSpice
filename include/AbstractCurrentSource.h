@@ -10,11 +10,14 @@ public:
                                                node2) {
     }
 
-    virtual std::string getType() const override {
+    [[nodiscard]] virtual std::string getType() const override {
         return "Abstract Current Source";
     }
 
-    virtual ~AbstractCurrentSource() override= default;
+    ~AbstractCurrentSource() override= default;
+
+    void ResidualStamp(sunrealtype t, N_Vector y, N_Vector yp, N_Vector F_Residual) override;
+
 };
 
 #endif //ABSTRACTCURRENTSOURCE_H

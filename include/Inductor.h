@@ -20,7 +20,7 @@ public:
 
     [[nodiscard]] std::string getType() const override { return "Inductor"; }
 
-    void ResidualStamp() override;
+    void ResidualStamp(sunrealtype t, N_Vector y, N_Vector yp, N_Vector F_Residual) override;
 
     bool isLinear() override {
         return true;

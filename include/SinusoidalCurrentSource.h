@@ -14,13 +14,13 @@ public:
 
     SinusoidalCurrentSource(double amplitude, double frequency, double offset);
 
-    void ResidualStamp() override;
+    void ResidualStamp(sunrealtype t, N_Vector y, N_Vector yp, N_Vector F_Residual) override;
 
     bool isLinear() override {
         return false;
     }
 
-    std::string getType() const override {
+    [[nodiscard]] std::string getType() const override {
         return "Sinusoidal Current Source";
     }
 };

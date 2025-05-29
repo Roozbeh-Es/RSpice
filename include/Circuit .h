@@ -34,19 +34,26 @@ public:
 
     ~Circuit();
 
-    void loadComponents(std::vector<std::unique_ptr<Element> > CircuitComponents, const std::map<std::string, int>& initialNodeMap);
 
-    void prepareForSimulation();
+    [[nodiscard ]]int getNumNodes() const {
+        return numNodes_;
+    }
+
+    [[nodiscard]]int getNumVoltageSources() const {
+        return  numVoltageSources_;
+    }
+
+    [[nodiscard]]int getNumInductors() const {
+        return numInductors_;
+    }
 
 private:
     std::vector<std::unique_ptr<Element> > elements_;
     std::map<std::string, int> nodeNameToIndex_;
     int numNodes_;
     int numVoltageSources_;
-    double time_;
-    double timeStep_;
-    Vector currentNodeVoltages_;
-    Vector CurrentSourceCurrents_;
+    int numInductors_;
+    int numEquations_;
 };
 
 
