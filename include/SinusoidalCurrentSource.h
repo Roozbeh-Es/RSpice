@@ -3,11 +3,16 @@
 
 #include "AbstractCurrentSource.h"
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 class SinusoidalCurrentSource : public AbstractCurrentSource {
 private:
     double amplitude_;
     double frequency_;
     double offset_;
+    double phase_;
 
 public:
     SinusoidalCurrentSource();
@@ -22,6 +27,10 @@ public:
 
     [[nodiscard]] std::string getType() const override {
         return "Sinusoidal Current Source";
+    }
+
+    sunrealtype getCurrent(sunrealtype t, N_Vector y) override {
+        return amplitude_ * std::sin(2 * M_PI * frequency_ * (t-phase_));
     }
 };
 

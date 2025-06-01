@@ -20,8 +20,12 @@ public:
         return false;
     }
 
-    std::string getType() const override {
+    [[nodiscard]] std::string getType() const override {
         return "DC Current Source";
+    }
+
+    sunrealtype getCurrent(sunrealtype  t, N_Vector y) override {
+        return DCCurrent_;
     }
 };
 
