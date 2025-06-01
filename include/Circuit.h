@@ -55,13 +55,31 @@ public:
         return elements_;
     }
 
+    [[nodiscard]] SUNContext getSUNContext() const {
+        return suncntx_;
+    }
+
+    [[nodiscard]] long int getNumEquations() const {
+        return numEquations_;
+    }
+
+    void getInitialConditions(N_Vector y_vec, N_Vector yp_vec) {
+        N_VConst(0.0, y_vec);
+        N_VConst(0.0, yp_vec);
+    }
+
+    void printTransientResults(sunrealtype t_current, N_Vector y_vec) ;
+
+    std::vector<std::string> getOrderedUnknownNames();
+
+
 private:
     std::vector<std::unique_ptr<Element> > elements_;
     std::map<std::string, int> nodeNameToIndex_;
-    int numNodes_;
-    int numVoltageSources_;
-    int numInductors_;
-    int numEquations_;
+    long int numNodes_;
+    long int numVoltageSources_;
+    long int numInductors_;
+    long int numEquations_;
     SUNContext suncntx_;
 };
 

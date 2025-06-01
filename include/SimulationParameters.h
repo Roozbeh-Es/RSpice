@@ -10,7 +10,7 @@ enum class AnalysisType {
 
 struct TransientParameters {
     double stopTime_;
-    double outputTimeStop_;
+    double outputTimeStep_;
     double startTime_ = 0.0;
     double maxInternalTimeStep_ = 0.1;
 };
