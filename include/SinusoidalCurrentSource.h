@@ -19,8 +19,6 @@ public:
 
     SinusoidalCurrentSource(double amplitude, double frequency, double offset);
 
-    void ResidualStamp(sunrealtype t, N_Vector y, N_Vector yp, N_Vector F_Residual) override;
-
     bool isLinear() override {
         return false;
     }
@@ -29,7 +27,7 @@ public:
         return "Sinusoidal Current Source";
     }
 
-    sunrealtype getCurrent(sunrealtype t, N_Vector y) override {
+    sunrealtype getCurrent(sunrealtype t, N_Vector y) const override {
         return amplitude_ * std::sin(2 * M_PI * frequency_ * (t-phase_));
     }
 };

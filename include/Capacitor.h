@@ -9,7 +9,7 @@ public:
     Capacitor(std::string name, std::string node1Name, std::string node2Name, int node1,
             int node2, double capacitance) : Element(std::move(name), std::move(node1Name), std::move(node2Name), node1, node2), capacitance_(capacitance) {}
 
-    ~Capacitor() final;
+    ~Capacitor() final = default;
 
     void ResidualStamp(sunrealtype t, N_Vector y, N_Vector yp, N_Vector F_Residual) override;
 

@@ -70,7 +70,7 @@ public:
 
     void printTransientResults(sunrealtype t_current, N_Vector y_vec) ;
 
-    std::vector<std::string> getOrderedUnknownNames();
+    [[nodiscard]] std::vector<std::string> getOrderedUnknownNames() const;
 
 
 private:

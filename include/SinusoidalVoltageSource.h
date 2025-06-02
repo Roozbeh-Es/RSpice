@@ -33,7 +33,6 @@ public:
          offset_(offset),
          phase_(phase) {}
 
-    void ResidualStamp(sunrealtype t, N_Vector y, N_Vector yp, N_Vector F_Residual) override;
 
     std::string getType() const override {
         return "Sinusoidal Voltage Source";

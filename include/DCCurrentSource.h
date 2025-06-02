@@ -3,7 +3,7 @@
 
 #include "AbstractCurrentSource.h"
 
-class DCCurrentSource : AbstractCurrentSource {
+class DCCurrentSource : public AbstractCurrentSource {
 private:
     double DCCurrent_;
 
@@ -14,7 +14,6 @@ public:
 
     ~DCCurrentSource() override final = default;
 
-    void ResidualStamp(sunrealtype t, N_Vector y, N_Vector yp, N_Vector F_Residual) override;
 
     bool isLinear() override {
         return false;
@@ -24,7 +23,7 @@ public:
         return "DC Current Source";
     }
 
-    sunrealtype getCurrent(sunrealtype  t, N_Vector y) override {
+    sunrealtype getCurrent(sunrealtype  t, N_Vector y) const override {
         return DCCurrent_;
     }
 };
