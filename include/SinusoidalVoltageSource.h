@@ -10,28 +10,33 @@
 
 class SinusoidalVoltageSource : public AbstractVoltageSource {
 private:
+    double offset_;
     double amplitude_;
     double frequency_;
-    double offset_;
+    double timeDelay_;
+    double dampingFactor_;
     double phase_;
 
 public:
     SinusoidalVoltageSource();
 
-    SinusoidalVoltageSource(const std::string& name,
-                           const std::string& node1Name,
-                           const std::string& node2Name,
-                           int node1Index,
-                           int node2Index,
-                           double amplitude,
-                           double frequency,
-                           double offset,
-                           double phase)
-       : AbstractVoltageSource(name, node1Name, node2Name, node1Index, node2Index),
-         amplitude_(amplitude),
-         frequency_(frequency),
-         offset_(offset),
-         phase_(phase) {}
+    SinusoidalVoltageSource(const std::string &name,
+                            const std::string &node1Name,
+                            const std::string &node2Name,
+                            double offset,
+                            double amplitude,
+                            double frequency,
+                            double timeDelay,
+                            double dampingFactor,
+                            double phase)
+        : AbstractVoltageSource(name, node1Name, node2Name),
+          offset_(offset),
+          amplitude_(amplitude),
+          frequency_(frequency),
+          timeDelay_(timeDelay),
+          dampingFactor_(dampingFactor),
+          phase_(phase) {
+    }
 
 
     std::string getType() const override {

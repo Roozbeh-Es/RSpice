@@ -11,9 +11,8 @@ private:
 public:
     Inductor();
 
-    Inductor(std::string name, std::string node1Name, std::string node2Name, int node1,
-             int node2, double inductance) : Element(std::move(name), std::move(node1Name), std::move(node2Name), node1,
-                                                     node2), inductance_(inductance) {
+    Inductor(std::string name, std::string node1Name, std::string node2Name, double inductance) : Element(
+        std::move(name), std::move(node1Name), std::move(node2Name)) , inductance_(inductance) {
     }
 
     ~Inductor() final = default;
@@ -30,6 +29,7 @@ public:
         return inductorEquationIndex_;
     }
 
+    void setInductorEquationIndex(long int index) { inductorEquationIndex_ = index; }
 };
 
 

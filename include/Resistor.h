@@ -7,8 +7,9 @@ class Resistor : public Element {
 public:
     Resistor();
 
-    Resistor(std::string name,std::string node1Name, std::string node2Name, int node1, int node2, double resistance) : Element(std::move(name), node1Name, node2Name, node1, node2),
-                                                                          resistance_(resistance) {
+    Resistor(std::string name, std::string node1Name, std::string node2Name, double resistance) : Element(
+            std::move(name), std::move(node1Name), std::move(node2Name)),
+        resistance_(resistance) {
     };
 
     [[nodiscard]] double getResistance() const { return resistance_; };

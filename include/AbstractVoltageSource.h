@@ -8,9 +8,8 @@ protected:
     int voltageSourceEquationIndex_;
 
 public:
-    AbstractVoltageSource(std::string name, std::string node1Name, std::string node2Name, int node1,
-                          int node2) : Element(std::move(name), std::move(node1Name), std::move(node2Name), node1,
-                                               node2) {
+    AbstractVoltageSource(std::string name, std::string node1Name, std::string node2Name) : Element(
+        std::move(name), std::move(node1Name), std::move(node2Name)) {
     }
 
     ~AbstractVoltageSource() override = default;
@@ -28,6 +27,9 @@ public:
     //y is for dependencies for the dependent sources that we will add later on
     virtual sunrealtype getVoltage(sunrealtype t, N_Vector y) const = 0;
 
+    void setVoltageSourceEquationIndex(long int index) {
+        voltageSourceEquationIndex_ = index;
+    }
 };
 
 

@@ -7,7 +7,10 @@ private:
     double DCVoltage_;
 
 public:
-    DCVoltageSource();
+    DCVoltageSource(std::string name, std::string node1Name, std::string node2Name,
+                    double voltage) : AbstractVoltageSource(std::move(name), std::move(node1Name), std::move(node2Name)),
+                                      DCVoltage_(voltage) {
+    }
 
     ~DCVoltageSource() override final = default;
 

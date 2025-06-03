@@ -8,7 +8,10 @@ private:
     double DCCurrent_;
 
 public:
-    DCCurrentSource();
+    DCCurrentSource(std::string name, std::string node1Name, std::string node2Name_,
+                    double current) : AbstractCurrentSource(std::move(name), std::move(node1Name),
+                                                            std::move(node2Name_)), DCCurrent_(current) {
+    };
 
     DCCurrentSource(double DCCurrent);
 
@@ -23,7 +26,7 @@ public:
         return "DC Current Source";
     }
 
-    sunrealtype getCurrent(sunrealtype  t, N_Vector y) const override {
+    sunrealtype getCurrent(sunrealtype t, N_Vector y) const override {
         return DCCurrent_;
     }
 };
