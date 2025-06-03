@@ -9,6 +9,7 @@
 #include <sunlinsol/sunlinsol_dense.h>
 #include <sundials/sundials_types.h>
 #include <sundials/sundials_context.h>
+#include <vector>
 
 class Element {
 public:
@@ -33,6 +34,13 @@ public:
 
     void setNode1Index(int node1Index) { node1Index_ = node1Index; }
     void setNode2Index(int node2Index) { node2Index_ = node2Index; }
+
+    [[nodiscard]] std::vector<std::string> getNodeNames() const {
+        return {node1Name_, node2Name_};
+    }
+
+    [[nodiscard]] std::string getNode1Name() const { return node1Name_; }
+    [[nodiscard]] std::string getNode2Name() const { return node2Name_; }
 
 protected:
     std::string name_;

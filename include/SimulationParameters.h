@@ -12,7 +12,7 @@ enum class AnalysisType {
 struct TransientParameters {
     TransientParameters() = default;
 
-    TransientParameters(double outputTimeStep, double stopTime, double startTime, double maxInternalTimeStep,
+    TransientParameters(long double outputTimeStep, long double stopTime, long double startTime, long double maxInternalTimeStep,
                         bool UIC) : outputTimeStep_(outputTimeStep), stopTime_(stopTime), startTime_(startTime),
                                     maxInternalTimeStep_(maxInternalTimeStep), UIC_(UIC) {
     }
@@ -27,8 +27,8 @@ struct TransientParameters {
 struct DCSweepParameters {
     DCSweepParameters() = default;
 
-    DCSweepParameters(std::string sourceName, double startValue, double stopValue,
-                      double increment) : sourceName_(std::move(sourceName)), startValue_(startValue),
+    DCSweepParameters(std::string sourceName, long double startValue, long double stopValue,
+                      long double increment) : sourceName_(std::move(sourceName)), startValue_(startValue),
                                           stopValue_(stopValue),
                                           increment_(increment) {
     }

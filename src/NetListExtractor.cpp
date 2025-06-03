@@ -166,6 +166,7 @@ void NetListExtractor::parseInductor(const std::vector<std::string> &tokens) {
     long double inductance = extractValueFromString(tokens[3]);
 
     this->rawElements_.push_back(std::make_unique<Inductor>(name, node1Name, node2Name, inductance));
+    this->numInductors_++;
     std::cout << "NetListExtractor: Parsed Inductor: " << name << std::endl;
 }
 
@@ -478,9 +479,9 @@ void NetListExtractor::parseDC(const std::vector<std::string> &tokens) {
         throw std::runtime_error("insufficient information for DC analysis");
     }
 
-    std::string sourceName = tokens[1];
+    const std::string &sourceName = tokens[1];
 
-    long double startValue= extractValueFromString(tokens[2]);
+    long double startValue = extractValueFromString(tokens[2]);
 
     long double stopValue = extractValueFromString(tokens[3]);
 
@@ -490,10 +491,39 @@ void NetListExtractor::parseDC(const std::vector<std::string> &tokens) {
 
     this->simulationParameters_.DCSweepParameters_ = DCSweepParameters(sourceName, startValue, stopValue, increment);
 
-    std::cout << "DC sweep analysis regiseted" << std::endl;
+    std::cout << "DC sweep analysis registered" << std::endl;
 }
 
 void NetListExtractor::parseOP(const std::vector<std::string> &tokens) {
     this->simulationParameters_.analysisType_ = AnalysisType::DC_OPERATING_POINT;
     std::cout << "NetListExtractor: Parsed .OP command." << std::endl;
+}
+
+
+void NetListExtractor::performSizingAndIndexing() {
+    nodeNameToIndex_.clear();
+    nodeNameToIndex_["GND"] = 0;
+    numNodes_ = 0;
+    for (const auto &element_ptr: rawElements_) {
+        if (!element_ptr) continue;
+        for (std::string name: element_ptr->getNodeNames()) {
+            if (nodeNameToIndex_.find(name) == nodeNameToIndex_.end()) {
+                nodeNameToIndex_[name] = ++numNodes_;
+            }
+        }
+    }
+    for (const auto &element_ptr: rawElements_) {
+        element_ptr->setNode1Index(nodeNameToIndex_[element_ptr->getNode1Name()]);
+        element_ptr->setNode2Index(nodeNameToIndex_[element_ptr->getNode2Name()]);
+    }
+    int inductorIndex = numNodes_ + numVoltageSources_;
+    int voltageSourceIndex = numNodes_;
+    for (const auto &element_ptr: rawElements_) {
+        if (auto voltageSource_ptr = dynamic_cast<AbstractVoltageSource *>(element_ptr.get())) {
+            voltageSource_ptr->setVoltageSourceEquationIndex(voltageSourceIndex++);
+        } else if (auto inductor_ptr = dynamic_cast<Inductor *>(element_ptr.get())) {
+            inductor_ptr->setInductorEquationIndex(inductorIndex++);
+        }
+    }
+    numEquations_ = numNodes_ + numInductors_ + numVoltageSources_;
 }
