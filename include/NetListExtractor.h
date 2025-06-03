@@ -30,6 +30,16 @@ private:
 
     void performSizingAndIndexing();
 
+    void parseResistor(const std::vector<std::string> &tokens);
+
+    void parseCapacitor(const std::vector<std::string> &tokens);
+
+    void parseInductor(const std::vector<std::string> &tokens);
+
+    void parseVoltageSource(const std::vector<std::string> &tokens);
+
+    void parseCurrentSource(const std::vector<std::string> &tokens);
+
 public:
     explicit NetListExtractor(std::string filePath);
 

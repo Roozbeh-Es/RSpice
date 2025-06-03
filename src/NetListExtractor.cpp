@@ -7,10 +7,8 @@
 #include "Resistor.h"
 #include "Capacitor.h"
 #include "Inductor.h"
-#include "AbstractVoltageSource.h"
 #include "SinusoidalVoltageSource.h"
 #include "DCVoltageSource.h"
-#include "AbstractCurrentSource.h"
 #include "DCCurrentSource.h"
 #include "SinusoidalCurrentSource.h"
 
