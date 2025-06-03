@@ -1,6 +1,7 @@
 #ifndef SIMULATIONPARAMETERS_H
 #define SIMULATIONPARAMETERS_H
 #include <string>
+#include <utility>
 
 enum class AnalysisType {
     TRANSIENT,
@@ -9,26 +10,46 @@ enum class AnalysisType {
 };
 
 struct TransientParameters {
-    double stopTime_;
-    double outputTimeStep_;
-    double startTime_ = 0.0;
-    double maxInternalTimeStep_ = 0.1;
+    TransientParameters() = default;
+
+    TransientParameters(double outputTimeStep, double stopTime, double startTime, double maxInternalTimeStep,
+                        bool UIC) : outputTimeStep_(outputTimeStep), stopTime_(stopTime), startTime_(startTime),
+                                    maxInternalTimeStep_(maxInternalTimeStep), UIC_(UIC) {
+    }
+
+    long double outputTimeStep_;
+    long double stopTime_;
+    long double startTime_ = 0.0;
+    long double maxInternalTimeStep_ = 0.1;
+    bool UIC_;
 };
 
 struct DCSweepParameters {
+    DCSweepParameters() = default;
+
+    DCSweepParameters(std::string sourceName, double startValue, double stopValue,
+                      double increment) : sourceName_(std::move(sourceName)), startValue_(startValue),
+                                          stopValue_(stopValue),
+                                          increment_(increment) {
+    }
+
     std::string sourceName_;
-    double startValue_;
-    double stopValue_;
-    double increment_;
+    long double startValue_;
+    long double stopValue_;
+    long double increment_;
 };
 
 struct SimulationParameters {
-    AnalysisType analysisType_;
+    SimulationParameters() = default;
+
+    AnalysisType analysisType_ = AnalysisType::DC_OPERATING_POINT;
 
     TransientParameters transientParameters_;
-    DCSweepParameters dcSweepParameters_;
+    DCSweepParameters DCSweepParameters_;
 
-    SimulationParameters() : analysisType_(AnalysisType::TRANSIENT) {}
+    [[nodiscard]] bool isTransient() const { return analysisType_ == AnalysisType::TRANSIENT; }
+    [[nodiscard]] bool isDCSweep() const { return analysisType_ == AnalysisType::DC_SWEEP; }
+    [[nodiscard]] bool isOPPoint() const { return analysisType_ == AnalysisType::DC_OPERATING_POINT; }
 };
 
 #endif //SIMULATIONPARAMETERS_H

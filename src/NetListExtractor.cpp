@@ -11,6 +11,7 @@
 #include "DCVoltageSource.h"
 #include "DCCurrentSource.h"
 #include "SinusoidalCurrentSource.h"
+#include "SimulationParameters.h"
 
 std::string trim(const std::string &line) {
     std::string cleaned;
@@ -26,7 +27,7 @@ std::string trim(const std::string &line) {
     trimmedLine = trimmedLine.substr(firstNonSpace);
 
     // 2. Skip full-line SPICE comments
-    if (trimmedLine.empty() || trimmedLine[0] == '*' || trimmedLine[0] == '.') {
+    if (trimmedLine.empty() || trimmedLine[0] == '*') {
         return "";
     }
 
@@ -127,10 +128,11 @@ bool NetListExtractor::loadAndProcessNetList(const std::string &filePath) {
     return true;
 }
 
-void NetListExtractor::parseResistor(const std::vector<std::string>& tokens) {
+void NetListExtractor::parseResistor(const std::vector<std::string> &tokens) {
     // tokens[0] is name, tokens[1] is node1, tokens[2] is node2, tokens[3] is value
     std::string name = tokens[0];
-    if (tokens.size() < 4) { // Basic check, R L C usually need 4 tokens.
+    if (tokens.size() < 4) {
+        // Basic check, R L C usually need 4 tokens.
         throw std::runtime_error("Error: Resistor " + name + " has insufficient parameters. Expected at least 4.\n");
     }
     std::string node1Name = tokens[1];
@@ -141,7 +143,7 @@ void NetListExtractor::parseResistor(const std::vector<std::string>& tokens) {
     std::cout << "NetListExtractor: Parsed Resistor: " << name << std::endl;
 }
 
-void NetListExtractor::parseCapacitor(const std::vector<std::string>& tokens) {
+void NetListExtractor::parseCapacitor(const std::vector<std::string> &tokens) {
     std::string name = tokens[0];
     if (tokens.size() < 4) {
         throw std::runtime_error("Error: Capacitor " + name + " has insufficient parameters. Expected at least 4.\n");
@@ -154,7 +156,7 @@ void NetListExtractor::parseCapacitor(const std::vector<std::string>& tokens) {
     std::cout << "NetListExtractor: Parsed Capacitor: " << name << std::endl;
 }
 
-void NetListExtractor::parseInductor(const std::vector<std::string>& tokens) {
+void NetListExtractor::parseInductor(const std::vector<std::string> &tokens) {
     std::string name = tokens[0];
     if (tokens.size() < 4) {
         throw std::runtime_error("Error: Inductor " + name + " has insufficient parameters. Expected at least 4.\n");
@@ -167,7 +169,7 @@ void NetListExtractor::parseInductor(const std::vector<std::string>& tokens) {
     std::cout << "NetListExtractor: Parsed Inductor: " << name << std::endl;
 }
 
-void NetListExtractor::parseVoltageSource(const std::vector<std::string>& tokens) {
+void NetListExtractor::parseVoltageSource(const std::vector<std::string> &tokens) {
     std::string name = tokens[0];
     std::string node1Name = tokens[1];
     std::string node2Name = tokens[2];
@@ -203,14 +205,17 @@ void NetListExtractor::parseVoltageSource(const std::vector<std::string>& tokens
                 try {
                     sineParams.emplace_back(extractValueFromString(paramTokenStr));
                 } catch (const std::exception &e) {
-                    std::string errMsg = "Error parsing SIN parameter '" + paramTokenStr + "' for " + name + ": " + e.what() + "\n";
+                    std::string errMsg = "Error parsing SIN parameter '" + paramTokenStr + "' for " + name + ": " + e.
+                                         what() + "\n";
                     std::cerr << errMsg;
-                    throw std::runtime_error(errMsg); // Re-throw to stop processing this line/file or handle as per strategy
+                    throw std::runtime_error(errMsg);
+                    // Re-throw to stop processing this line/file or handle as per strategy
                 }
             }
         }
 
-        if (sineParams.size() >= 3) { // vo, va, freq are essential
+        if (sineParams.size() >= 3) {
+            // vo, va, freq are essential
             long double offset = sineParams[0];
             long double amplitude = sineParams[1];
             long double frequency = sineParams[2];
@@ -224,9 +229,11 @@ void NetListExtractor::parseVoltageSource(const std::vector<std::string>& tokens
             this->numVoltageSources_++; // Accessing member variable
             std::cout << "NetListExtractor: Parsed Sinusoidal Voltage Source: " << name << std::endl;
         } else {
-            throw std::runtime_error("Error: Insufficient parameters for SIN source " + name + ". Need at least VO, VA, FREQ.\n");
+            throw std::runtime_error(
+                "Error: Insufficient parameters for SIN source " + name + ". Need at least VO, VA, FREQ.\n");
         }
-    } else { // DC Source
+    } else {
+        // DC Source
         long double dcValue;
         if (paramStartTokenUpper == "DC") {
             if (tokens.size() < 5) {
@@ -235,7 +242,8 @@ void NetListExtractor::parseVoltageSource(const std::vector<std::string>& tokens
             try {
                 dcValue = extractValueFromString(tokens[4]);
             } catch (const std::exception &e) {
-                std::string errMsg = "Error parsing DC value for " + name + " after DC keyword (token: " + tokens[4] + "): " + e.what() + "\n";
+                std::string errMsg = "Error parsing DC value for " + name + " after DC keyword (token: " + tokens[4] +
+                                     "): " + e.what() + "\n";
                 std::cerr << errMsg;
                 return; // Stop parsing this element, move to next line
             }
@@ -243,9 +251,11 @@ void NetListExtractor::parseVoltageSource(const std::vector<std::string>& tokens
             try {
                 dcValue = extractValueFromString(paramStartToken);
             } catch (const std::exception &e) {
-                std::string errMsg = "Error parsing DC value for " + name + " (token: " + paramStartToken + "): " + e.what() + "\n";
+                std::string errMsg = "Error parsing DC value for " + name + " (token: " + paramStartToken + "): " + e.
+                                     what() + "\n";
                 std::cerr << errMsg;
-                std::cout << "Note: This might also be an AC specification or other unhandled VSource parameter." << std::endl;
+                std::cout << "Note: This might also be an AC specification or other unhandled VSource parameter." <<
+                        std::endl;
                 return; // Stop parsing this element, move to next line
             }
         }
@@ -256,7 +266,7 @@ void NetListExtractor::parseVoltageSource(const std::vector<std::string>& tokens
     // No 'break;' needed at the end of a function
 }
 
-void NetListExtractor::parseCurrentSource(const std::vector<std::string>& tokens) {
+void NetListExtractor::parseCurrentSource(const std::vector<std::string> &tokens) {
     std::string name = tokens[0];
     std::string node1Name = tokens[1];
     std::string node2Name = tokens[2];
@@ -289,14 +299,16 @@ void NetListExtractor::parseCurrentSource(const std::vector<std::string>& tokens
                 try {
                     sineParams.emplace_back(extractValueFromString(paramTokenStr));
                 } catch (const std::exception &e) {
-                    std::string errMsg = "Error parsing SIN parameter '" + paramTokenStr + "' for " + name + ": " + e.what() + "\n";
+                    std::string errMsg = "Error parsing SIN parameter '" + paramTokenStr + "' for " + name + ": " + e.
+                                         what() + "\n";
                     std::cerr << errMsg;
                     throw std::runtime_error(errMsg);
                 }
             }
         }
 
-        if (sineParams.size() >= 3) { // io, ia, freq are essential
+        if (sineParams.size() >= 3) {
+            // io, ia, freq are essential
             long double offset = sineParams[0];
             long double amplitude = sineParams[1];
             long double frequency = sineParams[2];
@@ -310,9 +322,11 @@ void NetListExtractor::parseCurrentSource(const std::vector<std::string>& tokens
             // this->numCurrentSources_++; // Assuming you add/have this member for consistency
             std::cout << "NetListExtractor: Parsed Sinusoidal Current Source: " << name << std::endl;
         } else {
-            throw std::runtime_error("Error: Insufficient parameters for SIN source " + name + ". Need at least IO, IA, FREQ.\n");
+            throw std::runtime_error(
+                "Error: Insufficient parameters for SIN source " + name + ". Need at least IO, IA, FREQ.\n");
         }
-    } else { // DC Current Source
+    } else {
+        // DC Current Source
         long double dcValue;
         if (paramStartTokenUpper == "DC") {
             if (tokens.size() < 5) {
@@ -321,7 +335,8 @@ void NetListExtractor::parseCurrentSource(const std::vector<std::string>& tokens
             try {
                 dcValue = extractValueFromString(tokens[4]);
             } catch (const std::exception &e) {
-                std::string errMsg = "Error parsing DC value for " + name + " after DC keyword (token: " + tokens[4] + "): " + e.what() + "\n";
+                std::string errMsg = "Error parsing DC value for " + name + " after DC keyword (token: " + tokens[4] +
+                                     "): " + e.what() + "\n";
                 std::cerr << errMsg;
                 return; // Stop parsing this element
             }
@@ -329,9 +344,11 @@ void NetListExtractor::parseCurrentSource(const std::vector<std::string>& tokens
             try {
                 dcValue = extractValueFromString(paramStartToken);
             } catch (const std::exception &e) {
-                std::string errMsg = "Error parsing DC value for " + name + " (token: " + paramStartToken + "): " + e.what() + "\n";
+                std::string errMsg = "Error parsing DC value for " + name + " (token: " + paramStartToken + "): " + e.
+                                     what() + "\n";
                 std::cerr << errMsg;
-                std::cout << "Note: This might also be an AC specification or other unhandled ISource parameter." << std::endl;
+                std::cout << "Note: This might also be an AC specification or other unhandled ISource parameter." <<
+                        std::endl;
                 return; // Stop parsing this element
             }
         }
@@ -377,36 +394,106 @@ void NetListExtractor::parseLine(const std::string &line) {
     }
 }
 
-void NetListExtractor::parseElementLine(const std::string &componentToken, const std::vector<std::string> &tokens) {
-    if (tokens.empty()) { // Should ideally be checked before calling
+void NetListExtractor::parseElementLine(const std::string &elementToken, const std::vector<std::string> &tokens) {
+    if (tokens.empty()) {
+        // Should ideally be checked before calling
         throw std::runtime_error("parseElementLine called with empty tokens.");
     }
 
-    // componentToken is effectively tokens[0] and is the element's name (e.g., "R1", "VSOURCE")
+    // elementToken is effectively tokens[0] and is the element's name (e.g., "R1", "VSOURCE")
     // The type character is the first character of this token.
-    char typeChar = static_cast<char>(std::toupper(static_cast<unsigned char>(componentToken[0])));
+    char typeChar = static_cast<char>(std::toupper(static_cast<unsigned char>(elementToken[0])));
 
-    std::cout << "NetListExtractor: Dispatching parsing for type '" << typeChar << "' with name '" << componentToken << "'" << std::endl;
+    std::cout << "NetListExtractor: Dispatching parsing for type '" << typeChar << "' with name '" << elementToken <<
+            "'" << std::endl;
 
     switch (typeChar) {
         case 'R':
             parseResistor(tokens);
-        break;
+            break;
         case 'C':
             parseCapacitor(tokens);
-        break;
+            break;
         case 'L':
             parseInductor(tokens);
-        break;
+            break;
         case 'V':
             parseVoltageSource(tokens);
-        break;
+            break;
         case 'I':
             parseCurrentSource(tokens);
-        break;
+            break;
         default:
-                std::cout << "NetListExtractor: Element type '" << typeChar << "' with name '" << componentToken <<
-                        "' not yet supported for detailed parsing or is a sub-circuit." << std::endl;
-        break;
+            std::cout << "NetListExtractor: Element type '" << typeChar << "' with name '" << elementToken <<
+                    "' not yet supported for detailed parsing or is a sub-circuit." << std::endl;
+            break;
     }
+}
+
+void NetListExtractor::parseCommandLine(const std::string &commandToken, const std::vector<std::string> &tokens) {
+    if (tokens.empty()) {
+        throw std::runtime_error("parseCommandLine called with empty tokens.");
+    }
+    if (commandToken == ".TRAN") {
+        parseTransient(tokens);
+    } else if (commandToken == ".DC") {
+        parseDC(tokens);
+    } else if (commandToken == ".OP") {
+        parseOP(tokens);
+    } else if (commandToken == ".END") {
+        std::cout << "NetListExtractor is done reading the net list" << std::endl;
+    }
+}
+
+void NetListExtractor::parseTransient(const std::vector<std::string> &tokens) {
+    if (tokens.empty()) {
+        throw std::runtime_error("parseTransient called with empty tokens.");
+    }
+    if (tokens.size() < 3) {
+        throw std::runtime_error("insufficient information for Transient analysis");
+    }
+    long double outputTimeStep = extractValueFromString(tokens[1]);
+
+    long double stopTime = extractValueFromString(tokens[2]);
+
+    long double startTime = (tokens.size() > 3) ? extractValueFromString(tokens[3]) : 0.0;
+
+    long double TMaxStep = (tokens.size() > 4) ? extractValueFromString(tokens[4]) : stopTime / 1000.0;
+
+    bool UIC = (tokens.size() > 5 && (tokens[5] == "UIC" || tokens[5] == "Uic" || tokens[5] == "uic")) ? true : false;
+
+    this->simulationParameters_.analysisType_ = AnalysisType::TRANSIENT;
+
+    this->simulationParameters_.transientParameters_ = TransientParameters(
+        outputTimeStep, stopTime, startTime, TMaxStep, UIC);
+
+    std::cout << "Transient analysis registered" << std::endl;
+}
+
+void NetListExtractor::parseDC(const std::vector<std::string> &tokens) {
+    if (tokens.empty()) {
+        throw std::runtime_error("parseDC called with empty tokens.");
+    }
+    if (tokens.size() < 5) {
+        throw std::runtime_error("insufficient information for DC analysis");
+    }
+
+    std::string sourceName = tokens[1];
+
+    long double startValue= extractValueFromString(tokens[2]);
+
+    long double stopValue = extractValueFromString(tokens[3]);
+
+    long double increment = extractValueFromString(tokens[4]);
+
+    this->simulationParameters_.analysisType_ = AnalysisType::DC_SWEEP;
+
+    this->simulationParameters_.DCSweepParameters_ = DCSweepParameters(sourceName, startValue, stopValue, increment);
+
+    std::cout << "DC sweep analysis regiseted" << std::endl;
+}
+
+void NetListExtractor::parseOP(const std::vector<std::string> &tokens) {
+    this->simulationParameters_.analysisType_ = AnalysisType::DC_OPERATING_POINT;
+    std::cout << "NetListExtractor: Parsed .OP command." << std::endl;
 }
