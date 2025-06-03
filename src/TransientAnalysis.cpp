@@ -109,10 +109,10 @@ void TransientAnalysis::solve(Circuit &circuit) {
      if (parameters_.stopTime_ > parameters_.startTime_) { // Only aim ahead if there's a duration
         sunrealtype first_step_hint = parameters_.outputTimeStep_ > 0 ? parameters_.outputTimeStep_ : (parameters_.stopTime_ - parameters_.startTime_);
         if (parameters_.maxInternalTimeStep_ > 0) {
-            first_step_hint = std::min(first_step_hint, parameters_.maxInternalTimeStep_);
+            first_step_hint = std::min(first_step_hint, static_cast<sunrealtype>(parameters_.maxInternalTimeStep_));
         }
         // Ensure the aim is slightly ahead but not too far, and valid
-        t_first_calc_ic_aim = parameters_.startTime_ + std::min(first_step_hint / 100.0, (parameters_.stopTime_ - parameters_.startTime_) / 2.0);
+        t_first_calc_ic_aim = parameters_.startTime_ + std::min(first_step_hint / 100.0, static_cast<sunrealtype>((parameters_.stopTime_ - parameters_.startTime_) / 2.0));
          if (t_first_calc_ic_aim <= parameters_.startTime_) {
             t_first_calc_ic_aim = parameters_.startTime_ + 1e-9; // A very small nudge if stopTime > startTime
          }

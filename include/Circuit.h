@@ -21,6 +21,8 @@
 #include <iostream>
 #include <cmath>
 #include <string>
+#include  "NetListExtractor.h"
+#include "SimulationParameters.h"
 #include <ida/ida.h>
 #include <nvector/nvector_serial.h>
 #include <sunmatrix/sunmatrix_dense.h>
@@ -30,28 +32,35 @@
 
 class Circuit {
 public:
-    Circuit();
+    Circuit(std::vector<std::unique_ptr<Element> > circuitElements,
+            SimulationParameters simParams,
+            long int numEquations,
+            long int numNonGroundNodes,
+            long int numVoltageSourceBranches,
+            long int numInductorBranches,
+            const std::map<std::string, int> &nodeMap
+    );
 
     ~Circuit();
 
 
-    [[nodiscard ]]int getNumNodes() const {
-        return numNodes_;
+    [[nodiscard ]] int getNumNodes() const {
+        return numNonGroundNodes_;
     }
 
-    [[nodiscard]]int getNumVoltageSources() const {
-        return  numVoltageSources_;
+    [[nodiscard]] int getNumVoltageSources() const {
+        return numVoltageSources_;
     }
 
-    [[nodiscard]]int getNumInductors() const {
+    [[nodiscard]] int getNumInductors() const {
         return numInductors_;
     }
 
-     std::vector<std::unique_ptr<Element>>& getElements()  {
+    std::vector<std::unique_ptr<Element> > &getElements() {
         return elements_;
     }
 
-    [[nodiscard]] const std::vector<std::unique_ptr<Element>>& getElements() const {
+    [[nodiscard]] const std::vector<std::unique_ptr<Element> > &getElements() const {
         return elements_;
     }
 
@@ -63,24 +72,22 @@ public:
         return numEquations_;
     }
 
-    void getInitialConditions(N_Vector y_vec, N_Vector yp_vec) {
-        N_VConst(0.0, y_vec);
-        N_VConst(0.0, yp_vec);
-    }
+    void getInitialConditions(N_Vector y_vec, N_Vector yp_vec);
 
-    void printTransientResults(sunrealtype t_current, N_Vector y_vec) ;
+    void printTransientResults(sunrealtype t_current, N_Vector y_vec);
 
     [[nodiscard]] std::vector<std::string> getOrderedUnknownNames() const;
 
-
 private:
     std::vector<std::unique_ptr<Element> > elements_;
-    std::map<std::string, int> nodeNameToIndex_;
-    long int numNodes_;
+    SimulationParameters simulationParameters_;
+    //std::map<std::string, int> nodeNameToIndex_;
+    long int numNonGroundNodes_;
     long int numVoltageSources_;
     long int numInductors_;
     long int numEquations_;
-    SUNContext suncntx_;
+    const std::map<std::string, int> nodeMap_;
+    SUNContext suncntx_ = nullptr;
 };
 
 
