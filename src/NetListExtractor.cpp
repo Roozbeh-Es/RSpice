@@ -11,6 +11,8 @@
 #include "SinusoidalVoltageSource.h"
 #include "DCVoltageSource.h"
 #include "AbstractCurrentSource.h"
+#include "DCCurrentSource.h"
+#include "SinusoidalCurrentSource.h"
 
 std::string trim(const std::string &line) {
     std::string cleaned;
@@ -193,37 +195,151 @@ void NetListExtractor::parseElementLine(const std::string &componentType, const 
             break;
         }
         case 'V': {
-            std::string name = tokens[1];
-            std::string node1Name = tokens[2];
-            std::string node2Name = tokens[3];
-            std::string fourthTokenUpper = tokens[3];
-            std::transform(fourthTokenUpper.begin(), fourthTokenUpper.end(), fourthTokenUpper.begin(), ::toupper);
-            if (fourthTokenUpper.rfind("SIN(", 0) == 0) {
+            std::string name = tokens[0];
+            std::string node1Name = tokens[1];
+            std::string node2Name = tokens[2];
+
+            if (tokens.size() < 4) {
+                throw std::runtime_error(
+                    "Error: Voltage source " + name + " requires at least a value/type after nodes.\n");
+            }
+
+            std::string paramStartToken = tokens[3];
+            std::string paramStartTokenUpper = paramStartToken;
+            std::transform(paramStartTokenUpper.begin(), paramStartTokenUpper.end(), paramStartTokenUpper.begin(),
+                           ::toupper);
+
+            if (paramStartTokenUpper.rfind("SIN(", 0) == 0) {
                 std::string combinedSinParams;
-                combinedSinParams += tokens[3].substr(fourthTokenUpper.find('(') + 1);
-                for (size_t i = 4; i < tokens.size(); i++) {
+                combinedSinParams += paramStartToken.substr(paramStartTokenUpper.find('(') + 1);
+
+                for (size_t i = 4; i < tokens.size(); ++i) {
                     combinedSinParams += " " + tokens[i];
                 }
-                size_t lastParen = combinedSinParams.rfind('(');
+
+                size_t lastParen = combinedSinParams.rfind(')');
                 if (lastParen != std::string::npos) {
                     combinedSinParams = combinedSinParams.substr(0, lastParen);
                 } else {
-                    throw std::runtime_error("Error: SIN command is not currently terminated by a ')'" << std::endl);
-                    break;
+                    throw std::runtime_error(
+                        "Error: SIN expression for " + name + " is not correctly terminated with ')'.\n");
                 }
+
                 std::stringstream paramStream(combinedSinParams);
-                std::string paramToken;
+                std::string paramTokenStr;
                 std::vector<long double> sineParams;
-                while (paramStream >> paramToken) {
-                    if (!paramToken.empty()) {
+                while (paramStream >> paramTokenStr) {
+                    if (!paramTokenStr.empty()) {
                         try {
-                            sineParams.emplace_back(extractValueFromString(paramToken));
+                            sineParams.emplace_back(extractValueFromString(paramTokenStr));
                         } catch (const std::exception &e) {
-                            std::cerr << e.what() << std::endl;
-                            return;
+                            std::string errMsg =
+                                    "Error parsing SIN parameter '" + paramTokenStr + "' for " + name + ": " + e.what()
+                                    + "\n";
+                            std::cerr << errMsg;
+                            throw std::runtime_error(errMsg);
                         }
                     }
                 }
+
+                if (sineParams.size() >= 3) {
+                    // vo, va, freq are essential
+                    long double offset = sineParams[0];
+                    long double amplitude = sineParams[1];
+                    long double frequency = sineParams[2];
+                    long double timeDelay = (sineParams.size() > 3) ? sineParams[3] : 0.0;
+                    long double dampingFactor = (sineParams.size() > 4) ? sineParams[4] : 0.0;
+                    long double phase = (sineParams.size() > 5) ? sineParams[5] : 0.0;
+
+                    rawElements_.emplace_back(std::make_unique<SinusoidalVoltageSource>(
+                        name, node1Name, node2Name,
+                        offset, amplitude, frequency, timeDelay, dampingFactor, phase));
+                    numVoltageSources_++;
+                    std::cout << "NetListExtractor: Parsed Sinusoidal Voltage Source: " << name << std::endl;
+                } else {
+                    throw std::runtime_error(
+                        "Error: Insufficient parameters for SIN source " + name + ". Need at least VO, VA, FREQ.\n");
+                }
+            } else {
+                long double dcValue;
+                if (paramStartTokenUpper == "DC") {
+                    if (tokens.size() < 5) {
+                        throw std::runtime_error(
+                            "Error: DC voltage source " + name + " missing value after DC keyword.\n");
+                    }
+                    try {
+                        dcValue = extractValueFromString(tokens[4]);
+                    } catch (const std::exception &e) {
+                        std::string errMsg = "Error parsing DC value for " + name + " after DC keyword (token: " +
+                                             tokens[4] + "): " + e.what() + "\n";
+                        std::cerr << errMsg;
+                        break;
+                    }
+                } else {
+                    try {
+                        dcValue = extractValueFromString(paramStartToken);
+                    } catch (const std::exception &e) {
+                        std::string errMsg = "Error parsing DC value for " + name + " (token: " + paramStartToken +
+                                             "): " + e.what() + "\n";
+                        std::cerr << errMsg;
+                        std::cout <<
+                                "Note: This might also be an AC specification or other unhandled VSource parameter." <<
+                                std::endl;
+                        break;
+                    }
+                }
+                rawElements_.emplace_back(std::make_unique<DCVoltageSource>(name, node1Name, node2Name, dcValue));
+                numVoltageSources_++;
+                std::cout << "NetListExtractor: Parsed DC Voltage Source: " << name << " Value: " << dcValue <<
+                        std::endl;
+            }
+            break;
+        }
+        case 'I': {
+            std::string name = tokens[0];
+            std::string node1Name = tokens[1];
+            std::string node2Name = tokens[2];
+
+            if (tokens.size() < 4) {
+                throw std::runtime_error(
+                    "Error: Current source " + name + " requires at least a value/type after nodes.\n");
+            }
+
+            std::string paramStartToken = tokens[3];
+            std::string paramStartTokenUpper = paramStartToken;
+            std::transform(paramStartTokenUpper.begin(), paramStartTokenUpper.end(), paramStartTokenUpper.begin(),
+                           ::toupper);
+
+            if (paramStartTokenUpper.rfind("SIN(", 0) == 0) {
+                std::string combinedSinParams = paramStartToken.substr(paramStartTokenUpper.find('(') + 1);
+                for (size_t i = 4; i < tokens.size(); ++i) {
+                    combinedSinParams += " " + tokens[i];
+                }
+                size_t lastParen = combinedSinParams.rfind(')');
+                if (lastParen != std::string::npos) {
+                    combinedSinParams = combinedSinParams.substr(0, lastParen);
+                } else {
+                    throw std::runtime_error(
+                        "Error: SIN expression for " + name + " is not properly terminated with a ')'.\n");
+                }
+
+                std::stringstream paramStream(combinedSinParams);
+                std::string paramTokenStr; // Renamed
+                std::vector<long double> sineParams;
+                while (paramStream >> paramTokenStr) {
+                    if (!paramTokenStr.empty()) {
+                        try {
+                            sineParams.emplace_back(extractValueFromString(paramTokenStr));
+                        } catch (const std::exception &e) {
+                            std::string errMsg =
+                                    "Error parsing SIN parameter '" + paramTokenStr + "' for " + name + ": " + e.what()
+                                    + "\n";
+                            std::cerr << errMsg;
+                            throw std::runtime_error(errMsg);
+                        }
+                    }
+                }
+
                 if (sineParams.size() >= 3) {
                     long double offset = sineParams[0];
                     long double amplitude = sineParams[1];
@@ -231,43 +347,53 @@ void NetListExtractor::parseElementLine(const std::string &componentType, const 
                     long double timeDelay = (sineParams.size() > 3) ? sineParams[3] : 0.0;
                     long double dampingFactor = (sineParams.size() > 4) ? sineParams[4] : 0.0;
                     long double phase = (sineParams.size() > 5) ? sineParams[5] : 0.0;
-                    rawElements_.emplace_back(std::make_unique<SinusoidalVoltageSource>(
-                        name, node1Name, node2Name, offset, amplitude, frequency, timeDelay,
-                        dampingFactor, phase));
-                    numVoltageSources_++;
-                    std::cout << "Sinusoidal voltage source added" << std::endl;
+
+                    rawElements_.emplace_back(std::make_unique<SinusoidalCurrentSource>(
+                        name, node1Name, node2Name,
+                        offset, amplitude, frequency, timeDelay, dampingFactor, phase));
+                    std::cout << "NetListExtractor: Parsed Sinusoidal Current Source: " << name << std::endl;
                 } else {
                     throw std::runtime_error(
-                        "Error: Insufficient parameters for Sin source" + name + ". Need at least VO, VA, FREQ." +
-                        '\n');
+                        "Error: Insufficient parameters for SIN source " + name + ". Need at least IO, IA, FREQ.\n");
                 }
             } else {
                 long double dcValue;
-                if (fourthTokenUpper == "DC") {
+                if (paramStartTokenUpper == "DC") {
                     if (tokens.size() < 5) {
-                        throw std::runtime_error("Error: DC voltage source " + name + " missing value after DC keyword." + '\n');
+                        throw std::runtime_error(
+                            "Error: DC current source " + name + " missing value after DC keyword.\n");
                     }
                     try {
                         dcValue = extractValueFromString(tokens[4]);
                     } catch (const std::exception &e) {
-                        std::cerr << "Error parsing DC value for " << name << " after DC keyword: " << e.what() << std::endl;
+                        std::string errMsg = "Error parsing DC value for " + name + " after DC keyword (token: " +
+                                             tokens[4] + "): " + e.what() + "\n";
+                        std::cerr << errMsg;
                         break;
                     }
                 } else {
                     try {
-                        dcValue = extractValueFromString(tokens[3]);
+                        dcValue = extractValueFromString(paramStartToken);
                     } catch (const std::exception &e) {
-                        std::cerr << "Error parsing DC value for " << name << " (token: " << tokens[3] << "): " << e.what() << std::endl;
-                        std::cout << "Note: This might also be an AC specification or other unhandled VSource parameter." << std::endl;
+                        std::string errMsg = "Error parsing DC value for " + name + " (token: " + paramStartToken +
+                                             "): " + e.what() + "\n";
+                        std::cerr << errMsg;
+                        std::cout <<
+                                "Note: This might also be an AC specification or other unhandled ISource parameter." <<
+                                std::endl;
                         break;
                     }
                 }
-                rawElements_.emplace_back(std::make_unique<DCVoltageSource>(name, node1Name, node2Name, dcValue));
-                numVoltageSources_++;
+                rawElements_.emplace_back(std::make_unique<DCCurrentSource>(name, node1Name, node2Name, dcValue));
+                std::cout << "NetListExtractor: Parsed DC Current Source: " << name << " Value: " << dcValue <<
+                        std::endl;
             }
+            break;
         }
+
         default:
-            std::cout << "NetListExtractor: Element type '" << componentType[0] << "' with name '" << tokens[1] << "' not yet supported for detailed parsing or is a sub-circuit." << std::endl;
-        break;
+            std::cout << "NetListExtractor: Element type '" << componentType[0] << "' with name '" << tokens[1] <<
+                    "' not yet supported for detailed parsing or is a sub-circuit." << std::endl;
+            break;
     }
 }

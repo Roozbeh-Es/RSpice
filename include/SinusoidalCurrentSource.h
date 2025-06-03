@@ -9,15 +9,22 @@
 
 class SinusoidalCurrentSource : public AbstractCurrentSource {
 private:
+    double offset_;
     double amplitude_;
     double frequency_;
-    double offset_;
+    double timeDelay_;
+    double dampingFactor_;
     double phase_;
 
 public:
     SinusoidalCurrentSource();
 
-    SinusoidalCurrentSource(double amplitude, double frequency, double offset);
+    SinusoidalCurrentSource(std::string name, std::string node1Name, std::string node2Name, double offset,
+                            double amplitude, double frequency, double timeDelay, double dampingFactor,
+                            double phase) : AbstractCurrentSource(name, node1Name, node2Name), offset_(offset),
+                                            amplitude_(amplitude), frequency_(frequency), timeDelay_(timeDelay),
+                                            dampingFactor_(dampingFactor), phase_(phase) {
+    };
 
     bool isLinear() override {
         return false;
@@ -28,7 +35,7 @@ public:
     }
 
     sunrealtype getCurrent(sunrealtype t, N_Vector y) const override {
-        return amplitude_ * std::sin(2 * M_PI * frequency_ * (t-phase_));
+        return amplitude_ * std::sin(2 * M_PI * frequency_ * (t - phase_));
     }
 };
 
