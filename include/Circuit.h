@@ -78,6 +78,10 @@ public:
 
     [[nodiscard]] std::vector<std::string> getOrderedUnknownNames() const;
 
+    [[nodiscard]] const SimulationParameters& getSimulationParameters() const {
+        return simulationParameters_;
+    }
+
 private:
     std::vector<std::unique_ptr<Element> > elements_;
     SimulationParameters simulationParameters_;

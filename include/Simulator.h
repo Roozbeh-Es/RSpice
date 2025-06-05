@@ -1,16 +1,19 @@
-#ifndef SIMULATOR_H
-#define SIMULATOR_H
-#include <string>
-#include <memory>
+#include <utility> // For std::move
+#include "string"
+#include "memory"
+#include "Analysis.h"
 #include "NetListExtractor.h"
 #include "Circuit.h"
-#include "Analysis.h"
 
 class Simulator {
 public:
-    explicit Simulator(std::string filePath) : netListExtractor_(std::move(filePath)), filePath_(filePath_) {}
+    // Corrected Constructor
+    explicit Simulator(std::string filePath) 
+        : filePath_(std::move(filePath)),       // 1. Move the path into the filePath_ member
+          netListExtractor_(this->filePath_)  // 2. Initialize extractor with the now-valid member
+    {}
 
-    bool runFile(const std::string &netListFilePath);
+    bool run(); // Let's make this take no arguments, since it uses the member filePath_
 
 private:
     std::string filePath_;
@@ -18,6 +21,3 @@ private:
     std::unique_ptr<Circuit> circuit_;
     std::unique_ptr<Analysis> analysis_;
 };
-
-
-#endif //SIMULATOR_H

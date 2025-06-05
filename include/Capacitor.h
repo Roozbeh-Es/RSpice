@@ -19,6 +19,10 @@ public:
         return true;
     }
 
+    std::string getType() const override {
+        return "Capacitor";
+    }
+
 private:
     double capacitance_;
 };

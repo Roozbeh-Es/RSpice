@@ -13,6 +13,16 @@
 #include "SinusoidalCurrentSource.h"
 #include "SimulationParameters.h"
 
+NetListExtractor::NetListExtractor(std::string filePath)
+    : filePath_(std::move(filePath)) {
+    // The constructor's job is to initialize member variables.
+    // The body can be empty if all work is done in the initializer list.
+    std::cout << "NetListExtractor created for file: " << filePath_ << std::endl;
+}
+std::vector<std::unique_ptr<Element>>&& NetListExtractor::getPreparedElements() {
+    return std::move(elements_);
+}
+
 std::string trim(const std::string &line) {
     std::string cleaned;
     bool inSpace = false;
@@ -528,3 +538,5 @@ void NetListExtractor::performSizingAndIndexing() {
     }
     numEquations_ = numNodes_ + numInductors_ + numVoltageSources_;
 }
+
+
