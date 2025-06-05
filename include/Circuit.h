@@ -82,6 +82,9 @@ public:
         return simulationParameters_;
     }
 
+    void populateIdVector(N_Vector id);
+
+
 private:
     std::vector<std::unique_ptr<Element> > elements_;
     SimulationParameters simulationParameters_;

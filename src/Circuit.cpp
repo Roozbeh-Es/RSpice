@@ -111,3 +111,29 @@ void Circuit::printTransientResults(sunrealtype t_current, N_Vector y_vec) {
     std::cout << std::endl;
 }
 
+// In Circuit.cpp
+void Circuit::populateIdVector(N_Vector id) {
+    // Start by assuming all variables are algebraic (id = 0.0)
+    N_VConst(0.0, id);
+    sunrealtype* id_data = N_VGetArrayPointer(id);
+
+    // Iterate through elements to find differential variables
+    for (const auto& el : elements_) {
+
+        if (el->getType() == "Capacitor") {
+            // Voltages at nodes connected to a capacitor are differential
+            if (el->getNode1() != 0) { // getNode1() returns the integer index
+                id_data[el->getNode1() - 1] = 1.0;
+            }
+            if (el->getNode2() != 0) {
+                id_data[el->getNode2() - 1] = 1.0;
+            }
+        } else if (el->getType() == "Inductor") {
+            // Current through an inductor is a differential variable
+            auto inductor = static_cast<Inductor*>(el.get());
+            id_data[inductor->getInductorIndex()] = 1.0;
+        }
+    }
+    std::cout << "Circuit: ID vector populated for DAE solver." << std::endl;
+}
+

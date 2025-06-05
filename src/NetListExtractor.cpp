@@ -15,11 +15,10 @@
 
 NetListExtractor::NetListExtractor(std::string filePath)
     : filePath_(std::move(filePath)) {
-    // The constructor's job is to initialize member variables.
-    // The body can be empty if all work is done in the initializer list.
     std::cout << "NetListExtractor created for file: " << filePath_ << std::endl;
 }
-std::vector<std::unique_ptr<Element>>&& NetListExtractor::getPreparedElements() {
+
+std::vector<std::unique_ptr<Element> > &&NetListExtractor::getPreparedElements() {
     return std::move(elements_);
 }
 
@@ -108,7 +107,6 @@ long double extractValueFromString(const std::string &value) {
 
 
 void NetListExtractor::clear() {
-    filePath_.clear();
     numNodes_ = 0;
     numVoltageSources_ = 0;
     numInductors_ = 0;
@@ -120,8 +118,18 @@ void NetListExtractor::clear() {
 bool NetListExtractor::loadAndProcessNetList() {
     clear();
     std::ifstream netListFile(filePath_);
+
+    // --- Add this for debugging ---
+    std::cout << "[DEBUG] Trying to open file with path: \"" << filePath_ << "\"" << std::endl;
+    // --- End debug code ---
+
     if (!netListFile.is_open()) {
         std::cerr << "Failed to open file " << filePath_ << std::endl;
+
+        // --- ADD THIS LINE ---
+        // This will print the OS-level reason for the failure, e.g., "No such file or directory"
+        perror("OS-level reason");
+
         return false;
     }
     std::string line;
@@ -538,5 +546,3 @@ void NetListExtractor::performSizingAndIndexing() {
     }
     numEquations_ = numNodes_ + numInductors_ + numVoltageSources_;
 }
-
-
