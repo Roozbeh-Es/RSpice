@@ -52,7 +52,7 @@ std::vector<std::string> Circuit::getOrderedUnknownNames() const {
     // We need a reverse map from MNA index (0 to K-1) to node name
     // Node indices are 1 to K. MNA indices are 0 to K-1.
     std::map<int, std::string> mnaIndexToNodeName;
-    for (const auto& pair : numEquations_) {
+    for (const auto& pair : nodeMap_) {
         if (pair.second != 0) { // Not ground
             mnaIndexToNodeName[pair.second - 1] = pair.first; // map MNA KCL_row_idx to name
         }

@@ -47,9 +47,9 @@ private:
     void parseOP(const std::vector<std::string>& tokens);
 
 public:
-    explicit NetListExtractor(std::string filePath);
+    NetListExtractor(std::string filePath);
 
-    bool loadAndProcessNetList(const std::string &filePath);
+    bool loadAndProcessNetList();
 
     std::vector<std::unique_ptr<Element> > &&getPreparedElements();
 

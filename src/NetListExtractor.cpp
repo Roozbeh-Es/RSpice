@@ -107,11 +107,11 @@ void NetListExtractor::clear() {
     elements_.clear();
 }
 
-bool NetListExtractor::loadAndProcessNetList(const std::string &filePath) {
+bool NetListExtractor::loadAndProcessNetList() {
     clear();
-    std::ifstream netListFile(filePath);
+    std::ifstream netListFile(filePath_);
     if (!netListFile.is_open()) {
-        std::cerr << "Failed to open file " << filePath << std::endl;
+        std::cerr << "Failed to open file " << filePath_ << std::endl;
         return false;
     }
     std::string line;
@@ -125,6 +125,7 @@ bool NetListExtractor::loadAndProcessNetList(const std::string &filePath) {
         parseLine(trimmedLine);
     }
     netListFile.close();
+    performSizingAndIndexing();
     return true;
 }
 
