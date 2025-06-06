@@ -6,6 +6,8 @@
 class DCCurrentSource : public AbstractCurrentSource {
 private:
     double DCCurrent_;
+    double saveCurrent_;
+    bool first = false;
 
 public:
     DCCurrentSource(std::string name, std::string node1Name, std::string node2Name_,
@@ -32,6 +34,14 @@ public:
 
     sunrealtype getCurrent() override {
         return DCCurrent_;
+    }
+
+    void setCurrent(double newCurrent) {
+        if(!first) {
+            saveCurrent_ = DCCurrent_;
+            first = true;
+        }
+        DCCurrent_ = newCurrent;
     }
 
 };

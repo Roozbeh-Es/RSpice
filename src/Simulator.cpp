@@ -4,6 +4,7 @@
 #include <iostream>
 #include <stdexcept>
 #include "DCAnalysis.h"
+#include "DCSweepAnalysis.h"
 
 
 
@@ -35,8 +36,9 @@ bool Simulator::run() {
             analysis_ = std::make_unique<TransientAnalysis>(simParams.transientParameters_);
             std::cout << "Simulator: Transient analysis strategy selected." << std::endl;
         } else if (simParams.isDCSweep()) {
-            std::cerr << "Simulator Error: DC Sweep analysis is not yet implemented." << std::endl;
-            return false;
+            analysis_ = std::make_unique<DCSweepAnalysis>(simParams.DCSweepParameters_); // <-- UNCOMMENT/ADD THIS LINE
+            std::cout << "Simulator: DC Sweep analysis strategy selected." << std::endl;
+            // return false; // Remove this
         } else if (simParams.isOPPoint()) {
             analysis_ = std::make_unique<DCAnalysis>();
             std::cout << "Simulator: DC Operating Point analysis strategy selected." << std::endl;

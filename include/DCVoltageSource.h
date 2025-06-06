@@ -5,6 +5,8 @@
 class DCVoltageSource : public AbstractVoltageSource {
 private:
     double DCVoltage_;
+    double saveVoltage_;
+    bool first = false;
 
 public:
     DCVoltageSource(std::string name, std::string node1Name, std::string node2Name,
@@ -29,6 +31,14 @@ public:
 
     sunrealtype getVoltage() override {
         return DCVoltage_;
+    }
+
+    void setVoltage(double newVoltage) {
+        if(!first) {
+            saveVoltage_ = DCVoltage_;
+            first = true;
+        }
+        DCVoltage_ = newVoltage;
     }
 };
 #endif //DCVOLTAGESOURCE_H
