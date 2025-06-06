@@ -17,7 +17,11 @@ public:
 
     void ResidualStamp(sunrealtype t, N_Vector y, N_Vector yp, N_Vector F_Residual) override;
 
+    void DCStamp(N_Vector y, N_Vector F) override;
+
     virtual sunrealtype getCurrent(sunrealtype t, N_Vector y) const = 0;
+
+    virtual sunrealtype getCurrent() = 0;
 };
 
 #endif //ABSTRACTCURRENTSOURCE_H

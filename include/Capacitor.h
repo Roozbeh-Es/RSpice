@@ -15,6 +15,9 @@ public:
 
     void ResidualStamp(sunrealtype t, N_Vector y, N_Vector yp, N_Vector F_Residual) override;
 
+    void DCStamp(N_Vector y, N_Vector F) override;
+
+
     bool isLinear() override {
         return true;
     }

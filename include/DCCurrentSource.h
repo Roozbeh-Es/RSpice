@@ -29,6 +29,11 @@ public:
     sunrealtype getCurrent(sunrealtype t, N_Vector y) const override {
         return DCCurrent_;
     }
+
+    sunrealtype getCurrent() override {
+        return DCCurrent_;
+    }
+
 };
 
 #endif //DCCURRENTSOURCE_H

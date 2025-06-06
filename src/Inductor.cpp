@@ -24,3 +24,24 @@ void Inductor::ResidualStamp(sunrealtype t, N_Vector y, N_Vector yp, N_Vector F_
     // Stamp KVL: Vp - Vn = L dIL/dt + RMIN * IL
     F_data[this->inductorEquationIndex_] += VL - (this->inductance_ * dIL + RMIN * IL);
 }
+
+void Inductor::DCStamp(N_Vector y, N_Vector F) {
+    sunrealtype *y_data = N_VGetArrayPointer(y);
+    sunrealtype *F_data = N_VGetArrayPointer(F);
+
+    sunrealtype Vp = (node1Index_ == 0) ? 0.0 : y_data[this->node1Index_ - 1];
+
+    sunrealtype Vn = node2Index_ == 0 ? 0.0 : y_data[this->node2Index_ - 1];
+
+    sunrealtype resistance = 1e-5;
+    sunrealtype current = (Vp - Vn) / resistance;
+
+    if (this->node1Index_ != 0) {
+        F_data[this->node1Index_ - 1] += current;
+    }
+
+    if (this->node2Index_ != 0) {
+        F_data[this->node2Index_ - 1] -= current;
+    }
+
+}

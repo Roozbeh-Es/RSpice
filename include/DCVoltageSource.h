@@ -26,5 +26,9 @@ public:
     sunrealtype getVoltage(sunrealtype t, N_Vector y) const override {
         return DCVoltage_;
     }
+
+    sunrealtype getVoltage() override {
+        return DCVoltage_;
+    }
 };
 #endif //DCVOLTAGESOURCE_H

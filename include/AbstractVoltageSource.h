@@ -20,12 +20,17 @@ public:
 
     void ResidualStamp(sunrealtype t, N_Vector y, N_Vector yp, N_Vector F_Residual) override;
 
+    void DCStamp(N_Vector y, N_Vector F) override;
+
+
     [[nodiscard]] int getVoltageSourceCurrentIndex() const {
         return voltageSourceEquationIndex_;
     }
 
     //y is for dependencies for the dependent sources that we will add later on
     virtual sunrealtype getVoltage(sunrealtype t, N_Vector y) const = 0;
+
+    virtual sunrealtype getVoltage() = 0;
 
     void setVoltageSourceEquationIndex(long int index) {
         voltageSourceEquationIndex_ = index;
