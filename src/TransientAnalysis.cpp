@@ -22,150 +22,195 @@ int transientIDACallBack(sunrealtype t, N_Vector y, N_Vector yp, N_Vector F_resi
     }
     return 0;
 }
-void TransientAnalysis::solve(Circuit &circuit) {
-    std::cout << "Starting transient analysis ..." << std::endl;
-    std::cout << "stop time : " << parameters_.stopTime_
-            << ", output step: " << parameters_.outputTimeStep_
-            << ", start time : " << parameters_.startTime_
-            << ", max internal step: " << parameters_.maxInternalTimeStep_ << std::endl;
 
+// In TransientAnalysis.cpp
+
+void TransientAnalysis::solve(Circuit &circuit)
+{
+    std::cout << "Starting transient analysis …\n"
+              << "  stop time       : " << parameters_.stopTime_       << "\n"
+              << "  output step     : " << parameters_.outputTimeStep_ << "\n"
+              << "  start time      : " << parameters_.startTime_      << "\n"
+              << "  max internal step: " << parameters_.maxInternalTimeStep_ << "\n";
+
+    // (1) Get SUNDIALS context & number of eqns
     SUNContext sunctx = circuit.getSUNContext();
     if (!sunctx) {
-        throw std::runtime_error("CRITICAL ERROR: SUNDIALS Context is NULL from Circuit object.");
+        throw std::runtime_error("CRITICAL ERROR: SUNDIALS Context is NULL.");
     }
-
     long int num_equations = circuit.getNumEquations();
     if (num_equations <= 0) {
-        throw std::runtime_error("CRITICAL ERROR: Number of equations from Circuit is invalid: " + std::to_string(num_equations));
+        throw std::runtime_error("CRITICAL ERROR: Invalid num_equations = "
+                                 + std::to_string(num_equations));
     }
 
-    N_Vector y_vec = N_VNew_Serial(num_equations, sunctx);
+    // (2) Allocate y, yp, id
+    N_Vector y_vec  = N_VNew_Serial(num_equations, sunctx);
     N_Vector yp_vec = N_VNew_Serial(num_equations, sunctx);
     N_Vector id_vec = N_VNew_Serial(num_equations, sunctx);
-    void *ida_mem = nullptr;
-    SUNMatrix A_mat = nullptr;
-    SUNLinearSolver LS_solver = nullptr;
-
     if (!y_vec || !yp_vec || !id_vec) {
-        std::cerr << "SUNDIALS Error: Failed to allocate N_Vectors." << std::endl;
+        std::cerr << "[ERROR] Failed to allocate N_Vectors.\n";
+        if (y_vec ) N_VDestroy(y_vec);
+        if (yp_vec) N_VDestroy(yp_vec);
+        if (id_vec) N_VDestroy(id_vec);
+        return;
+    }
+    std::cout << "[Info] Allocated N_Vectors of length " << num_equations << "\n";
+
+    // (3) Fill initial conditions and ID vector
+    circuit.getInitialConditions(y_vec, yp_vec);
+    circuit.populateIdVector(id_vec);
+    std::cout << "[Info] Initial conditions and ID vector populated.\n";
+
+    // (4) Create IDA memory
+    void *ida_mem = IDACreate(sunctx);
+    if (!check_sundials_flag(ida_mem ? 0 : -1, "IDACreate")) {
         N_VDestroy(y_vec); N_VDestroy(yp_vec); N_VDestroy(id_vec);
         return;
     }
-    std::cout << "N_Vectors y, yp, and id allocated with size: " << num_equations << std::endl;
+    std::cout << "[Info] IDA memory created.\n";
 
-    circuit.getInitialConditions(y_vec, yp_vec);
-    circuit.populateIdVector(id_vec);
-    std::cout << "Initial conditions and ID vector populated." << std::endl;
-
-    ida_mem = IDACreate(sunctx);
-    if (!check_sundials_flag(ida_mem ? 0 : -1, "IDACreate")) {
-        N_VDestroy(y_vec); N_VDestroy(yp_vec); N_VDestroy(id_vec); return;
-    }
-    std::cout << "IDA memory created." << std::endl;
-
-    if (!check_sundials_flag(IDAInit(ida_mem, transientIDACallBack, parameters_.startTime_, y_vec, yp_vec), "IDAInit")) {
-        IDAFree(&ida_mem); N_VDestroy(y_vec); N_VDestroy(yp_vec); N_VDestroy(id_vec); return;
-    }
-    std::cout << "IDA solver initialized with callback at t0 = " << parameters_.startTime_ << std::endl;
-
-    if (!check_sundials_flag(IDASetUserData(ida_mem, &circuit), "IDASetUserData")) {
-        IDAFree(&ida_mem); N_VDestroy(y_vec); N_VDestroy(yp_vec); N_VDestroy(id_vec); return;
-    }
-    std::cout << "IDA user data set to circuit object." << std::endl;
-
-    if (!check_sundials_flag(IDASetId(ida_mem, id_vec), "IDASetId")) {
-        IDAFree(&ida_mem); N_VDestroy(y_vec); N_VDestroy(yp_vec); N_VDestroy(id_vec); return;
-    }
-    std::cout << "IDA ID vector set." << std::endl;
-
-    sunrealtype reltol = 1.0e-4;
-    sunrealtype abstol_scalar = 1.0e-6;
-    if (!check_sundials_flag(IDASStolerances(ida_mem, reltol, abstol_scalar), "IDASStolerances")) {
-        IDAFree(&ida_mem); N_VDestroy(y_vec); N_VDestroy(yp_vec); N_VDestroy(id_vec); return;
-    }
-    std::cout << "IDA tolerances set (reltol=" << reltol << ", abstol=" << abstol_scalar << ")." << std::endl;
-
-    A_mat = SUNDenseMatrix(num_equations, num_equations, sunctx);
-    LS_solver = SUNLinSol_Dense(y_vec, A_mat, sunctx);
-    if (!check_sundials_flag(A_mat && LS_solver ? 0 : -1, "SUNMatrix/SUNLinearSolver creation")) {
-        SUNMatDestroy(A_mat); SUNLinSolFree(LS_solver); IDAFree(&ida_mem); N_VDestroy(y_vec); N_VDestroy(yp_vec); N_VDestroy(id_vec); return;
-    }
-    if (!check_sundials_flag(IDASetLinearSolver(ida_mem, LS_solver, A_mat), "IDASetLinearSolver")) {
-        SUNMatDestroy(A_mat); SUNLinSolFree(LS_solver); IDAFree(&ida_mem); N_VDestroy(y_vec); N_VDestroy(yp_vec); N_VDestroy(id_vec); return;
-    }
-    std::cout << "IDA linear solver (Dense) set." << std::endl;
-
-    if (parameters_.maxInternalTimeStep_ > 0.0) {
-        if (!check_sundials_flag(IDASetMaxStep(ida_mem, parameters_.maxInternalTimeStep_), "IDASetMaxStep")) {
-            std::cerr << "Warning: Failed to set IDA max step size." << std::endl;
-        } else {
-            std::cout << "IDA max internal step size set to: " << parameters_.maxInternalTimeStep_ << std::endl;
-        }
-    }
-
-    sunrealtype t_first_calc_ic_aim = parameters_.startTime_;
-    if (parameters_.stopTime_ > parameters_.startTime_) {
-        sunrealtype first_step_hint = parameters_.outputTimeStep_ > 0 ? parameters_.outputTimeStep_ : (parameters_.stopTime_ - parameters_.startTime_);
-        if (parameters_.maxInternalTimeStep_ > 0) {
-            first_step_hint = std::min(first_step_hint, static_cast<sunrealtype>(parameters_.maxInternalTimeStep_));
-        }
-        t_first_calc_ic_aim = parameters_.startTime_ + std::min(first_step_hint / 100.0, static_cast<sunrealtype>((parameters_.stopTime_ - parameters_.startTime_) / 2.0));
-        if (t_first_calc_ic_aim <= parameters_.startTime_) {
-            t_first_calc_ic_aim = parameters_.startTime_ + 1e-9;
-        }
-    }
-
-    std::cout << "Calculating consistent initial conditions (IDACalcIC), IDA aiming for t_ic_aim = " << t_first_calc_ic_aim << std::endl;
-    if (!check_sundials_flag(IDACalcIC(ida_mem, IDA_YA_YDP_INIT, t_first_calc_ic_aim), "IDACalcIC")) {
-        std::cerr << "CRITICAL ERROR: IDACalcIC failed. Check DAE model, initial guesses, and DAE index." << std::endl;
-        SUNMatDestroy(A_mat); SUNLinSolFree(LS_solver); IDAFree(&ida_mem); N_VDestroy(y_vec); N_VDestroy(yp_vec); N_VDestroy(id_vec);
+    // (5) Initialize IDA with residual callback
+    int flag = IDAInit(ida_mem,
+                       transientIDACallBack,
+                       parameters_.startTime_,
+                       y_vec,
+                       yp_vec);
+    if (!check_sundials_flag(flag, "IDAInit")) {
+        IDAFree(&ida_mem);
+        N_VDestroy(y_vec); N_VDestroy(yp_vec); N_VDestroy(id_vec);
         return;
     }
-    std::cout << "Consistent initial conditions calculated successfully." << std::endl;
-    std::cout << "Consistent y(t0) after IDACalcIC:" << std::endl;
-    circuit.printTransientResults(parameters_.startTime_, y_vec);
+    std::cout << "[Info] IDA initialized at t0 = " << parameters_.startTime_ << "\n";
 
+    // (6) Attach circuit pointer
+    flag = IDASetUserData(ida_mem, &circuit);
+    if (!check_sundials_flag(flag, "IDASetUserData")) {
+        IDAFree(&ida_mem);
+        N_VDestroy(y_vec); N_VDestroy(yp_vec); N_VDestroy(id_vec);
+        return;
+    }
+
+    // (7) Set the ID vector (differential vs algebraic)
+    flag = IDASetId(ida_mem, id_vec);
+    if (!check_sundials_flag(flag, "IDASetId")) {
+        IDAFree(&ida_mem);
+        N_VDestroy(y_vec); N_VDestroy(yp_vec); N_VDestroy(id_vec);
+        return;
+    }
+    std::cout << "[Info] ID vector set.\n";
+
+    // (8) Set solver tolerances
+    sunrealtype reltol = 1.e-4, abstol = 1.e-6;
+    flag = IDASStolerances(ida_mem, reltol, abstol);
+    if (!check_sundials_flag(flag, "IDASStolerances")) {
+        IDAFree(&ida_mem);
+        N_VDestroy(y_vec); N_VDestroy(yp_vec); N_VDestroy(id_vec);
+        return;
+    }
+    std::cout << "[Info] Tolerances set (reltol=" << reltol
+              << ", abstol=" << abstol << ").\n";
+
+    // (9) Attach dense linear solver (or switch to sparse for large circuits)
+    SUNMatrix A_mat = SUNDenseMatrix(num_equations, num_equations, sunctx);
+    if (!A_mat) {
+        std::cerr << "[ERROR] SUNDenseMatrix() failed.\n";
+        IDAFree(&ida_mem);
+        N_VDestroy(y_vec); N_VDestroy(yp_vec); N_VDestroy(id_vec);
+        return;
+    }
+    SUNLinearSolver LS_solver = SUNLinSol_Dense(y_vec, A_mat, sunctx);
+    if (!LS_solver) {
+        std::cerr << "[ERROR] SUNLinSol_Dense() failed.\n";
+        SUNMatDestroy(A_mat);
+        IDAFree(&ida_mem);
+        N_VDestroy(y_vec); N_VDestroy(yp_vec); N_VDestroy(id_vec);
+        return;
+    }
+    flag = IDASetLinearSolver(ida_mem, LS_solver, A_mat);
+    if (!check_sundials_flag(flag, "IDASetLinearSolver")) {
+        SUNMatDestroy(A_mat);
+        SUNLinSolFree(LS_solver);
+        IDAFree(&ida_mem);
+        N_VDestroy(y_vec); N_VDestroy(yp_vec); N_VDestroy(id_vec);
+        return;
+    }
+    std::cout << "[Info] Dense linear solver attached.\n";
+
+    // (10) Determine “max internal step” and “output step”
+    sunrealtype maxstep = parameters_.maxInternalTimeStep_;
+    if (maxstep <= 0.0) {
+        maxstep = (parameters_.stopTime_ - parameters_.startTime_) / 1000.0;
+        if (maxstep <= 0.0) maxstep = 1e-6;
+    }
+    IDASetMaxStep(ida_mem, maxstep);  // we ignore the return code for brevity
+
+    sunrealtype outStep = parameters_.outputTimeStep_;
+    if (outStep <= 0.0) {
+        outStep = parameters_.stopTime_ - parameters_.startTime_;
+        // i.e. just print final time if outputStep was zero
+    }
+
+    // (11) Compute a tiny “IC aim” time for the DAE solver to use
+    sunrealtype t_i0 = parameters_.startTime_;
+    sunrealtype t_ic = t_i0 + maxstep/100.0;
+    if (t_ic <= t_i0) t_ic = t_i0 + 1e-9;
+
+    std::cout << "[Info] Calling IDACalcIC at t = " << t_ic << " …\n";
+
+    // (12) Use IDA_YA_YDP_INIT to solve both y(0) and y′(0) if needed
+    int ic_flag = IDACalcIC(ida_mem, IDA_YA_YDP_INIT, t_ic);
+    if (ic_flag != IDA_SUCCESS ) {
+        std::cerr << "[WARN] IDACalcIC failed (flag=" << ic_flag << "). "
+                  << "Proceeding with user‐supplied initial guess.\n";
+    } else {
+        std::cout << "[Info] IDACalcIC succeeded.\n";
+    }
+
+    // (13) Print header
     sunrealtype t_current = parameters_.startTime_;
-    sunrealtype t_out_next_print = parameters_.startTime_;
+    sunrealtype t_out     = t_current;
 
     std::cout << "\nTime";
-    std::vector<std::string> unknown_names = circuit.getOrderedUnknownNames();
-    for (const auto &name: unknown_names) {
-        std::cout << "," << name;
+    auto names = circuit.getOrderedUnknownNames();
+    if ((int)names.size() != num_equations) {
+        std::cerr << "[WARN] Name count (" << names.size()
+                  << ") != equation count (" << num_equations << ")\n";
     }
-    std::cout << std::endl;
+    for (auto &nm : names) {
+        std::cout << "," << nm;
+    }
+    std::cout << "\n";
 
+    // (14) Print initial condition at t0
     circuit.printTransientResults(t_current, y_vec);
 
-    if (parameters_.outputTimeStep_ > 0) {
-        t_out_next_print += parameters_.outputTimeStep_;
-    } else if (parameters_.startTime_ < parameters_.stopTime_) {
-        std::cerr << "Warning: outputTimeStep is zero for a ranged simulation. Only initial conditions will be printed." << std::endl;
-        t_out_next_print = parameters_.stopTime_ + 1.0;
-    }
+    // (15) Time‐march in “output” increments of outStep
+    while (t_out < parameters_.stopTime_) {
+        t_out += outStep;
+        if (t_out > parameters_.stopTime_) {
+            t_out = parameters_.stopTime_;
+        }
 
-    while (t_current < parameters_.stopTime_) {
-        sunrealtype t_solve_target = std::min(t_out_next_print, static_cast<sunrealtype>(parameters_.stopTime_));
-        int flag = IDASolve(ida_mem, t_solve_target, &t_current, y_vec, yp_vec, IDA_NORMAL);
-
-        if (!check_sundials_flag(flag, "IDASolve")) {
+        int solve_flag = IDASolve(ida_mem, t_out, &t_current, y_vec, yp_vec, IDA_NORMAL);
+        if (solve_flag < 0 && solve_flag != IDA_WARNING && solve_flag != IDA_TSTOP_RETURN) {
+            std::cerr << "[ERROR] IDASolve returned fatal code "
+                      << solve_flag << ": " << IDAGetReturnFlagName(solve_flag) << "\n";
             break;
         }
-
-        if (t_current >= t_out_next_print) {
-            circuit.printTransientResults(t_out_next_print, y_vec);
-            if (parameters_.outputTimeStep_ > 0) {
-                 t_out_next_print += parameters_.outputTimeStep_;
-            }
+        if (solve_flag == IDA_WARNING) {
+            std::cerr << "[WARN] IDASolve warning: "
+                      << IDAGetReturnFlagName(solve_flag) << "\n";
         }
+
+        circuit.printTransientResults(t_current, y_vec);
+
+        if (t_out >= parameters_.stopTime_) break;
     }
 
-    if (t_current < parameters_.stopTime_) {
-        circuit.printTransientResults(parameters_.stopTime_, y_vec);
-    }
+    std::cout << "\nTransient Analysis Finished.\n";
 
-    std::cout << "\nTransient Analysis Finished." << std::endl;
-
+    // (16) Clean up in reverse order
     IDAFree(&ida_mem);
     SUNLinSolFree(LS_solver);
     SUNMatDestroy(A_mat);

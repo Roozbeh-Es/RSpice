@@ -522,6 +522,7 @@ void NetListExtractor::parseOP(const std::vector<std::string> &tokens) {
 void NetListExtractor::performSizingAndIndexing() {
     nodeNameToIndex_.clear();
     nodeNameToIndex_["GND"] = 0;
+    nodeNameToIndex_["0"] = 0;
     numNodes_ = 0;
     for (const auto &element_ptr: rawElements_) {
         if (!element_ptr) continue;

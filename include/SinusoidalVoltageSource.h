@@ -48,8 +48,7 @@ public:
     }
 
     sunrealtype getVoltage(sunrealtype t, N_Vector y) const override {
-        std::cout <<"SINE VOLTAGE SOURCE VALUE: " << offset_ + amplitude_ * std::cos(2 * M_PI * frequency_ * (t - phase_)) << std::endl;
-        return offset_ + amplitude_ * std::cos(2 * M_PI * frequency_ * (t - phase_));
+        return offset_ + amplitude_ * std::sin(2 * M_PI * frequency_ * (t - phase_));
     }
 };
 

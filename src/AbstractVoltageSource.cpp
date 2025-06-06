@@ -17,8 +17,10 @@ void AbstractVoltageSource::ResidualStamp(sunrealtype t, N_Vector y, N_Vector yp
         F_data[this->node2Index_ - 1] -= I_vs;
     }
 
-    sunrealtype V = this->getVoltage(t, y);
 
-    F_data[this->voltageSourceEquationIndex_] += Vp - Vn - V;
+    sunrealtype V = this->getVoltage(t, y);
+    //std::cout << "[DEBUG][t=" << t << "] V(t,y) = " << V << "\n";
+
+    F_data[this->voltageSourceEquationIndex_] = Vp - Vn - V;
 
 }

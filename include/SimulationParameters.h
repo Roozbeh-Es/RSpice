@@ -20,7 +20,7 @@ struct TransientParameters {
     long double outputTimeStep_;
     long double stopTime_;
     long double startTime_ = 0.0;
-    long double maxInternalTimeStep_ = 0.1;
+    long double maxInternalTimeStep_ = 1e-7;
     bool UIC_;
 };
 
