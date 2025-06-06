@@ -12,6 +12,7 @@
 #include "DCCurrentSource.h"
 #include "SinusoidalCurrentSource.h"
 #include "SimulationParameters.h"
+#include "Diode.h"
 
 NetListExtractor::NetListExtractor(std::string filePath)
     : filePath_(std::move(filePath)) {
@@ -111,6 +112,7 @@ void NetListExtractor::clear() {
     numVoltageSources_ = 0;
     numInductors_ = 0;
     numEquations_ = 0;
+    numDiodes_ = 0;
     nodeNameToIndex_.clear();
     elements_.clear();
 }
@@ -165,7 +167,7 @@ void NetListExtractor::parseResistor(const std::vector<std::string> &tokens) {
 void NetListExtractor::parseCapacitor(const std::vector<std::string> &tokens) {
     std::string name = tokens[0];
     if (tokens.size() < 4) {
-        throw std::runtime_error("Error: Capacitor " + name + " has insufficient parameters. Expected at least 4.\n");
+        throw std::runtime_error("Error: Capacitor " + name + " has insufficient parameters. Expected 4.\n");
     }
     std::string node1Name = tokens[1];
     std::string node2Name = tokens[2];
@@ -178,7 +180,7 @@ void NetListExtractor::parseCapacitor(const std::vector<std::string> &tokens) {
 void NetListExtractor::parseInductor(const std::vector<std::string> &tokens) {
     std::string name = tokens[0];
     if (tokens.size() < 4) {
-        throw std::runtime_error("Error: Inductor " + name + " has insufficient parameters. Expected at least 4.\n");
+        throw std::runtime_error("Error: Inductor " + name + " has insufficient parameters. Expected 4.\n");
     }
     std::string node1Name = tokens[1];
     std::string node2Name = tokens[2];
@@ -187,6 +189,19 @@ void NetListExtractor::parseInductor(const std::vector<std::string> &tokens) {
     this->rawElements_.push_back(std::make_unique<Inductor>(name, node1Name, node2Name, inductance));
     this->numInductors_++;
     std::cout << "NetListExtractor: Parsed Inductor: " << name << std::endl;
+}
+
+void NetListExtractor::parseDiode(const std::vector<std::string> &tokens) {
+    std::string name = tokens[0];
+    if (tokens.size() < 4) {
+        throw std::runtime_error("Error: Diode " + name + " has insufficient parameters. Expected 4.\n");
+    }
+    std::string node1Name = tokens[1];
+    std::string node2Name = tokens[2];
+    long double forwardVoltage = extractValueFromString(tokens[3]);
+    this->rawElements_.push_back(std::make_unique<Diode>(name, node1Name, node2Name, forwardVoltage));
+    numDiodes_++;
+    std::cout << "NetListExtractor: Parsed Diode: " << name << "with forward Voltage : " << forwardVoltage  << std::endl;
 }
 
 void NetListExtractor::parseVoltageSource(const std::vector<std::string> &tokens) {
@@ -379,6 +394,7 @@ void NetListExtractor::parseCurrentSource(const std::vector<std::string> &tokens
     // No 'break;' needed at the end of a function
 }
 
+
 void NetListExtractor::parseLine(const std::string &line) {
     std::stringstream ss(line);
     std::string firstToken;
@@ -442,6 +458,9 @@ void NetListExtractor::parseElementLine(const std::string &elementToken, const s
             break;
         case 'I':
             parseCurrentSource(tokens);
+            break;
+        case 'D':
+            parseDiode(tokens);
             break;
         default:
             std::cout << "NetListExtractor: Element type '" << typeChar << "' with name '" << elementToken <<
@@ -538,14 +557,18 @@ void NetListExtractor::performSizingAndIndexing() {
     }
     int inductorIndex = numNodes_ + numVoltageSources_;
     int voltageSourceIndex = numNodes_;
+    int diodeIndex = numNodes_ + numVoltageSources_ + numInductors_;
+
     for (const auto &element_ptr: rawElements_) {
         if (auto voltageSource_ptr = dynamic_cast<AbstractVoltageSource *>(element_ptr.get())) {
             voltageSource_ptr->setVoltageSourceEquationIndex(voltageSourceIndex++);
         } else if (auto inductor_ptr = dynamic_cast<Inductor *>(element_ptr.get())) {
             inductor_ptr->setInductorEquationIndex(inductorIndex++);
+        } else if (auto diode_ptr = dynamic_cast<Diode *>(element_ptr.get())) {
+            diode_ptr->setEquationIndex(diodeIndex++);
         }
     }
-    numEquations_ = numNodes_ + numInductors_ + numVoltageSources_;
+
+    numEquations_ = numNodes_ + numInductors_ + numVoltageSources_ + numDiodes_;
     elements_ = std::move(rawElements_);
 }
-

@@ -17,6 +17,7 @@ private:
     long int numVoltageSources_;
     long int numInductors_;
     long int numEquations_;
+    long int numDiodes_;
     SimulationParameters simulationParameters_;
 
     //temp vector to hold our elements before indexing them
@@ -35,6 +36,8 @@ private:
     void parseCapacitor(const std::vector<std::string> &tokens);
 
     void parseInductor(const std::vector<std::string> &tokens);
+
+    void parseDiode(const std::vector<std::string>& tokens);
 
     void parseVoltageSource(const std::vector<std::string> &tokens);
 
@@ -67,6 +70,10 @@ public:
 
     [[nodiscard]] long int getNumInductors() const {
         return numInductors_;
+    }
+
+    [[nodiscard]] long int getNumDiodes() const {
+        return numDiodes_;
     }
 
     [[nodiscard]] long int getNumEquations() const {

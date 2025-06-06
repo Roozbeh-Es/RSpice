@@ -38,6 +38,7 @@ public:
             long int numNonGroundNodes,
             long int numVoltageSourceBranches,
             long int numInductorBranches,
+            long int numDiodeBranches,
             const std::map<std::string, int> &nodeMap
     );
 
@@ -94,6 +95,7 @@ private:
     long int numNonGroundNodes_;
     long int numVoltageSources_;
     long int numInductors_;
+    long int numDiodes_;
     long int numEquations_;
     const std::map<std::string, int> nodeMap_;
     SUNContext suncntx_ = nullptr;
