@@ -7,13 +7,13 @@
 
 class Simulator {
 public:
-    // Corrected Constructor
-    explicit Simulator(std::string filePath) 
-        : filePath_(std::move(filePath)),       // 1. Move the path into the filePath_ member
-          netListExtractor_(this->filePath_)  // 2. Initialize extractor with the now-valid member
-    {}
+    explicit Simulator(std::string filePath)
+        : filePath_(std::move(filePath)),
+          netListExtractor_(this->filePath_)
+    {
+    }
 
-    bool run(); // Let's make this take no arguments, since it uses the member filePath_
+    bool run();
 
 private:
     std::string filePath_;

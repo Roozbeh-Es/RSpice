@@ -85,6 +85,8 @@ public:
     void populateIdVector(N_Vector id);
 
 
+    void printDCResults(N_Vector y) const;
+
 private:
     std::vector<std::unique_ptr<Element> > elements_;
     SimulationParameters simulationParameters_;

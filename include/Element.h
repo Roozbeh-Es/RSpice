@@ -32,7 +32,7 @@ public:
 
     virtual void ResidualStamp(sunrealtype t, N_Vector y, N_Vector yp, N_Vector F_Residual) = 0;
 
-    virtual void DCStamp(N_Vector y,N_Vector F);
+    virtual void DCStamp(N_Vector y,N_Vector F) = 0;
 
     void setNode1Index(int node1Index) { node1Index_ = node1Index; }
     void setNode2Index(int node2Index) { node2Index_ = node2Index; }

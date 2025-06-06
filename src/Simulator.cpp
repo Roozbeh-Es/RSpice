@@ -1,9 +1,10 @@
 #include "Simulator.h"
 #include "TransientAnalysis.h"
-// #include "DCOpAnalysis.h"        // Include these once you create them
 // #include "DCSweepAnalysis.h"
 #include <iostream>
 #include <stdexcept>
+#include "DCAnalysis.h"
+
 
 
 bool Simulator::run() {
@@ -37,10 +38,10 @@ bool Simulator::run() {
             std::cerr << "Simulator Error: DC Sweep analysis is not yet implemented." << std::endl;
             return false;
         } else if (simParams.isOPPoint()) {
-            // analysis_ = std::make_unique<DCOpAnalysis>();
-            std::cerr << "Simulator Error: DC Operating Point analysis is not yet implemented." << std::endl;
-            return false;
-        } else {
+            analysis_ = std::make_unique<DCAnalysis>();
+            std::cout << "Simulator: DC Operating Point analysis strategy selected." << std::endl;
+            // return false; // Remove this
+        }  else {
             std::cerr << "Simulator Error: No valid analysis type specified in the netlist." << std::endl;
             return false;
         }

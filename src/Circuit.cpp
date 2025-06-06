@@ -43,59 +43,36 @@ Circuit::~Circuit() {
 
 #include "DCVoltageSource.h" // Ensure this is included at the top
 
-void Circuit::getInitialConditions(N_Vector y_vec, N_Vector yp_vec) {
-    // This function provides an *initial guess* for the IDACalcIC function.
-    // IDACalcIC will then solve for the true, consistent initial conditions.
+// In Circuit.cpp
 
-    // Start by setting everything to zero. This is a safe default guess for all scenarios.
+void Circuit::getInitialConditions(N_Vector y_vec, N_Vector yp_vec) {
+    // --- This function provides an initial GUESS for the solver ---
+
+    // Always set the initial guess for the main variables (y) to zero.
+    // This is a safe starting point.
     N_VConst(0.0, y_vec);
-    N_VConst(0.0, yp_vec);
+
+    // Only set the derivatives vector (yp) if it's provided.
+    // For DC analysis, it will be nullptr. For transient, it will be a valid vector.
+    if (yp_vec != nullptr) {
+        N_VConst(0.0, yp_vec);
+    }
 
     sunrealtype* y_data = N_VGetArrayPointer(y_vec);
+    std::cout << "Circuit: Setting smart initial conditions..." << std::endl;
 
-    // Check if the user wants to use explicitly specified Initial Conditions (UIC).
-    // The 'UIC_' flag is parsed from the .TRAN line.
-    if (this->simulationParameters_.transientParameters_.UIC_) {
-        // --- This path is taken if the netlist contains ".TRAN ... UIC" ---
-        std::cout << "Circuit: Applying user-specified initial conditions (UIC)." << std::endl;
+    // The rest of your smart initial guess logic remains the same.
+    // It correctly provides a better starting guess for the DC operating point.
+    for (const auto& el : elements_) {
+        if (auto vs = dynamic_cast<const DCVoltageSource*>(el.get())) {
+            int p_node_idx = vs->getNode1();
+            int n_node_idx = vs->getNode2();
+            double dc_value = vs->getVoltage(0,y_vec); // Using the simpler DC getter
 
-        // This is where you would apply any user-defined initial conditions
-        // parsed from ".IC" commands or "IC=" parameters on component lines.
-        // Since the parser doesn't support that yet, for now this block does
-        // nothing, and the simulation starts from y=0, yp=0 as specified by UIC.
-        // For example:
-        // for (const auto& el : elements_) {
-        //     if (auto cap = dynamic_cast<const Capacitor*>(el.get())) {
-        //         if (cap->hasInitialVoltage()) { // Assuming such methods exist
-        //             y_data[cap->getNode1() - 1] = cap->getInitialVoltage();
-        //         }
-        //     }
-        // }
-
-    } else {
-        // --- This is the default path: Provide a smart guess for the DC Operating Point ---
-        std::cout << "Circuit: Setting smart initial guess for DC Operating Point calculation." << std::endl;
-
-        // Iterate through all elements to find known DC values to improve the guess.
-        for (const auto& el : elements_) {
-            // We set known voltages from DC voltage sources.
-            if (auto vs = dynamic_cast<const DCVoltageSource*>(el.get())) {
-
-                int p_node_idx = vs->getNode1(); // Positive node index
-                int n_node_idx = vs->getNode2(); // Negative node index
-                double dc_value = vs->getVoltage(0,y_vec); // Use the new, clean getter
-
-                // If the source is connected between a node and ground, we can set
-                // the initial guess for that node's voltage directly.
-                if (p_node_idx != 0 && n_node_idx == 0) {
-                    // Positive node is not ground, negative node is ground.
-                    y_data[p_node_idx - 1] = dc_value;
-                } else if (p_node_idx == 0 && n_node_idx != 0) {
-                    // Positive node is ground, negative node is not ground.
-                    y_data[n_node_idx - 1] = -dc_value;
-                }
-                // Note: If the source is between two non-ground nodes, we don't set a guess,
-                // as we only know the voltage *difference*, not the absolute voltages.
+            if (p_node_idx != 0 && n_node_idx == 0) {
+                y_data[p_node_idx - 1] = dc_value;
+            } else if (p_node_idx == 0 && n_node_idx != 0) {
+                y_data[n_node_idx - 1] = -dc_value;
             }
         }
     }
@@ -203,5 +180,42 @@ void Circuit::populateIdVector(N_Vector id)
     }
 
     std::cout << "Circuit: ID vector populated for DAE solver.\n";
+}
+// Add this new function to Circuit.cpp
+#include <iomanip> // Make sure this header is included at the top of Circuit.cpp
+
+void Circuit::printDCResults(N_Vector y) const {
+    std::cout << "\n--- DC Operating Point Results ---" << std::endl;
+
+    // 1. Get the ordered list of unknown variable names.
+    std::vector<std::string> unknownNames = this->getOrderedUnknownNames();
+
+    // 2. Get the pointer to the final solution data.
+    const sunrealtype* y_data = N_VGetArrayPointer(y);
+
+    // 3. Loop through the results and print each one descriptively.
+    for (long int i = 0; i < this->numEquations_; ++i) {
+        // Get the name for the current variable (unknown)
+        std::string name = (i < unknownNames.size()) ? unknownNames[i] : "UNKNOWN_" + std::to_string(i);
+
+        // Get the calculated value
+        sunrealtype value = y_data[i];
+
+        // Determine the unit based on the variable name
+        std::string unit = " ";
+        if (!name.empty()) {
+            if (name[0] == 'V') {
+                unit = " V";
+            } else if (name[0] == 'I') {
+                unit = " A";
+            }
+        }
+
+        // Print the formatted line
+        std::cout << "  " << std::left << std::setw(15) << name
+                  << " = " << std::right << std::setw(12) << std::scientific << value
+                  << unit << std::endl;
+    }
+    std::cout << "------------------------------------" << std::endl;
 }
 
