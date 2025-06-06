@@ -202,7 +202,7 @@ void NetListExtractor::parseVoltageSource(const std::vector<std::string> &tokens
     std::string paramStartTokenUpper = paramStartToken;
     std::transform(paramStartTokenUpper.begin(), paramStartTokenUpper.end(), paramStartTokenUpper.begin(), ::toupper);
 
-    if (paramStartTokenUpper.rfind("SIN(", 0) == 0) {
+    if (paramStartTokenUpper.rfind("SINE(", 0) == 0) {
         std::string combinedSinParams;
         combinedSinParams += paramStartToken.substr(paramStartTokenUpper.find('(') + 1);
 
@@ -545,4 +545,6 @@ void NetListExtractor::performSizingAndIndexing() {
         }
     }
     numEquations_ = numNodes_ + numInductors_ + numVoltageSources_;
+    elements_ = std::move(rawElements_);
 }
+
