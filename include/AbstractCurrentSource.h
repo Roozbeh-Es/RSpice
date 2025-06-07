@@ -21,7 +21,7 @@ public:
 
     virtual sunrealtype getCurrent(sunrealtype t, N_Vector y) const = 0;
 
-    virtual sunrealtype getCurrent() = 0;
+    virtual sunrealtype getCurrent(N_Vector y) = 0;
 };
 
 #endif //ABSTRACTCURRENTSOURCE_H

@@ -13,6 +13,8 @@
 #include "SinusoidalCurrentSource.h"
 #include "SimulationParameters.h"
 #include "Diode.h"
+#include "VCVS.h"
+#include "VCCS.h"
 
 NetListExtractor::NetListExtractor(std::string filePath)
     : filePath_(std::move(filePath)) {
@@ -201,7 +203,7 @@ void NetListExtractor::parseDiode(const std::vector<std::string> &tokens) {
     long double forwardVoltage = extractValueFromString(tokens[3]);
     this->rawElements_.push_back(std::make_unique<Diode>(name, node1Name, node2Name, forwardVoltage));
     //numDiodes_++;
-    std::cout << "NetListExtractor: Parsed Diode: " << name << "with forward Voltage : " << forwardVoltage  << std::endl;
+    std::cout << "NetListExtractor: Parsed Diode: " << name << "with forward Voltage : " << forwardVoltage << std::endl;
 }
 
 void NetListExtractor::parseVoltageSource(const std::vector<std::string> &tokens) {
@@ -301,6 +303,37 @@ void NetListExtractor::parseVoltageSource(const std::vector<std::string> &tokens
     // No 'break;' needed at the end of a function
 }
 
+void NetListExtractor::parseVCVS(const std::vector<std::string> &tokens) {
+    if (tokens.size() < 6) {
+        throw std::runtime_error(
+            "VCVS " + tokens[0] +
+            " has insufficient parameters. Expected 6 tokens: <name> <out+> <out-> <in+> <in-> <gain>");
+    }
+
+    const std::string &name = tokens[0];
+    const std::string &out_p_node = tokens[1];
+    const std::string &out_n_node = tokens[2];
+    const std::string &control_p_node = tokens[3];
+    const std::string &control_n_node = tokens[4];
+
+    double gain = extractValueFromString(tokens[5]);
+
+    rawElements_.push_back(std::make_unique<VCVS>(
+        name,
+        out_p_node,
+        out_n_node,
+        control_p_node,
+        control_n_node,
+        gain
+    ));
+
+
+    this->numVoltageSources_++;
+
+    std::cout << "NetListExtractor: Parsed VCVS: " << name << std::endl;
+}
+
+
 void NetListExtractor::parseCurrentSource(const std::vector<std::string> &tokens) {
     std::string name = tokens[0];
     std::string node1Name = tokens[1];
@@ -388,10 +421,27 @@ void NetListExtractor::parseCurrentSource(const std::vector<std::string> &tokens
             }
         }
         this->rawElements_.emplace_back(std::make_unique<DCCurrentSource>(name, node1Name, node2Name, dcValue));
-        // this->numCurrentSources_++; // Assuming you add/have this member for consistency
         std::cout << "NetListExtractor: Parsed DC Current Source: " << name << " Value: " << dcValue << std::endl;
     }
-    // No 'break;' needed at the end of a function
+}
+
+
+void NetListExtractor::parseVCCS(const std::vector<std::string> &tokens) {
+    if (tokens.size() < 6) {
+        throw std::runtime_error("VCCS " + tokens[0] + " has insufficient parameters. Expected 6 tokens.");
+    }
+    const std::string &name = tokens[0];
+    const std::string &out_p_node = tokens[1];
+    const std::string &out_n_node = tokens[2];
+    const std::string &control_p_node = tokens[3];
+    const std::string &control_n_node = tokens[4];
+
+    double gain = extractValueFromString(tokens[5]);
+    rawElements_.push_back(std::make_unique<VCCS>(name,
+                                               out_p_node, out_n_node, control_p_node, control_n_node, gain
+    ));
+    std::cout << "NetListExtractor: Parsed VCCS: " << name << std::endl;
+
 }
 
 
@@ -462,6 +512,12 @@ void NetListExtractor::parseElementLine(const std::string &elementToken, const s
         case 'D':
             parseDiode(tokens);
             break;
+        case 'E':
+            parseVCVS(tokens);
+            break;
+        case 'G':
+            parseVCCS(tokens);
+        break;
         default:
             std::cout << "NetListExtractor: Element type '" << typeChar << "' with name '" << elementToken <<
                     "' not yet supported for detailed parsing or is a sub-circuit." << std::endl;
@@ -554,7 +610,18 @@ void NetListExtractor::performSizingAndIndexing() {
     for (const auto &element_ptr: rawElements_) {
         element_ptr->setNode1Index(nodeNameToIndex_[element_ptr->getNode1Name()]);
         element_ptr->setNode2Index(nodeNameToIndex_[element_ptr->getNode2Name()]);
+
+        if (auto vcvs_ptr = dynamic_cast<VCVS *>(element_ptr.get())) {
+            int control_p_idx = nodeNameToIndex_.at(vcvs_ptr->getControlPNodeName());
+            int control_n_idx = nodeNameToIndex_.at(vcvs_ptr->getControlNNodeName());
+            vcvs_ptr->setControlNodeIndices(control_p_idx, control_n_idx);
+        } else if (auto vccs_ptr = dynamic_cast<VCCS *>(element_ptr.get())) {
+            int control_p_idx = nodeNameToIndex_.at(vccs_ptr->getControlPNodeName());
+            int control_n_idx = nodeNameToIndex_.at(vccs_ptr->getControlNNodeName());
+            vccs_ptr->setControlNodeIndices(control_p_idx, control_n_idx);
+        }
     }
+
     int inductorIndex = numNodes_ + numVoltageSources_;
     int voltageSourceIndex = numNodes_;
     int diodeIndex = numNodes_ + numVoltageSources_ + numInductors_;
@@ -564,9 +631,7 @@ void NetListExtractor::performSizingAndIndexing() {
             voltageSource_ptr->setVoltageSourceEquationIndex(voltageSourceIndex++);
         } else if (auto inductor_ptr = dynamic_cast<Inductor *>(element_ptr.get())) {
             inductor_ptr->setInductorEquationIndex(inductorIndex++);
-        }/* else if (auto diode_ptr = dynamic_cast<Diode *>(element_ptr.get())) {
-            diode_ptr->setEquationIndex(diodeIndex++);
-        }*/
+        }
     }
 
     numEquations_ = numNodes_ + numInductors_ + numVoltageSources_; // + numDiodes_;

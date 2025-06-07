@@ -32,7 +32,7 @@ public:
         return DCCurrent_;
     }
 
-    sunrealtype getCurrent() override {
+    sunrealtype getCurrent(N_Vector y) override {
         return DCCurrent_;
     }
 

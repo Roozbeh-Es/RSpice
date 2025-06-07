@@ -42,7 +42,7 @@ void AbstractVoltageSource::DCStamp(N_Vector y, N_Vector F_Residual) {
     }
 
 
-    sunrealtype V = this->getVoltage();
+    sunrealtype V = this->getVoltage(y);
     //std::cout << "[DEBUG][t=" << t << "] V(t,y) = " << V << "\n";
 
     F_data[this->voltageSourceEquationIndex_] = Vp - Vn - V;

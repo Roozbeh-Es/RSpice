@@ -30,15 +30,10 @@ void DCAnalysis::solve(Circuit &circuit) {
     // Set initial guess for y. Using the smart IC function is a good start.
     circuit.getInitialConditions(y, nullptr);
 
-    std::cout << "Initial guess vector y:" << std::endl;
-    for (int i = 0; i < neq; ++i) {
-        std::cout << "  y[" << i << "] = " << NV_Ith_S(y, i) << std::endl;
-    }
-
     for (int iter = 0; iter < max_iters; ++iter) {
         // Calculate residual F(y)
         N_VConst(0.0, F);
-        for (const auto &el: circuit.getElements()) {
+        for (const auto &el : circuit.getElements()) {
             el->DCStamp(y, F);
         }
 
@@ -59,7 +54,7 @@ void DCAnalysis::solve(Circuit &circuit) {
             // Calculate F(y + delta)
             N_Vector F_perturb = N_VNew_Serial(neq, ctx);
             N_VConst(0.0, F_perturb);
-            for (const auto &el: circuit.getElements()) {
+            for (const auto &el : circuit.getElements()) {
                 el->DCStamp(y, F_perturb);
             }
 

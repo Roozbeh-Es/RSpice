@@ -29,7 +29,7 @@ public:
         return DCVoltage_;
     }
 
-    sunrealtype getVoltage() override {
+    sunrealtype getVoltage(N_Vector y) override {
         return DCVoltage_;
     }
 

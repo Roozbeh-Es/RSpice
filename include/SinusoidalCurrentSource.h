@@ -37,7 +37,7 @@ public:
     sunrealtype getCurrent(sunrealtype t, N_Vector y) const override {
         return amplitude_ * std::sin(2 * M_PI * frequency_ * (t - phase_));
     }
-    sunrealtype getCurrent() override {
+    sunrealtype getCurrent(N_Vector y) override {
         return offset_  + amplitude_;
     }
 };

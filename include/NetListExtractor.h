@@ -17,10 +17,8 @@ private:
     long int numVoltageSources_;
     long int numInductors_;
     long int numEquations_;
-    //long int numDiodes_;
     SimulationParameters simulationParameters_;
 
-    //temp vector to hold our elements before indexing them
     std::vector<std::unique_ptr<Element> > rawElements_;
 
     void parseLine(const std::string &line);
@@ -40,6 +38,10 @@ private:
     void parseDiode(const std::vector<std::string>& tokens);
 
     void parseVoltageSource(const std::vector<std::string> &tokens);
+
+    void parseVCVS(const std::vector<std::string>& tokens);
+
+    void parseVCCS(const std::vector<std::string>& tokens);
 
     void parseCurrentSource(const std::vector<std::string> &tokens);
 

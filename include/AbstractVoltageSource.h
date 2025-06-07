@@ -30,7 +30,7 @@ public:
     //y is for dependencies for the dependent sources that we will add later on
     virtual sunrealtype getVoltage(sunrealtype t, N_Vector y) const = 0;
 
-    virtual sunrealtype getVoltage() = 0;
+    virtual sunrealtype getVoltage(N_Vector y) = 0;
 
     void setVoltageSourceEquationIndex(long int index) {
         voltageSourceEquationIndex_ = index;

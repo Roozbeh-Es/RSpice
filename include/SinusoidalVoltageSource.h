@@ -50,7 +50,7 @@ public:
     sunrealtype getVoltage(sunrealtype t, N_Vector y) const override {
         return offset_ + amplitude_ * std::sin(2 * M_PI * frequency_ * (t - phase_));
     }
-    sunrealtype getVoltage() override {
+    sunrealtype getVoltage(N_Vector y) override {
         return offset_  + amplitude_;
     }
 };
