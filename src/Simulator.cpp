@@ -26,7 +26,7 @@ bool Simulator::run() {
             netListExtractor_.getNumNodes(),
             netListExtractor_.getNumVoltageSources(),
             netListExtractor_.getNumInductors(),
-            netListExtractor_.getNumDiodes(),
+            //,netListExtractor_.getNumDiodes(),
             netListExtractor_.getNodeMap()
         );
         std::cout << "Simulator: Circuit object created." << std::endl;

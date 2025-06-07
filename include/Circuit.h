@@ -38,7 +38,7 @@ public:
             long int numNonGroundNodes,
             long int numVoltageSourceBranches,
             long int numInductorBranches,
-            long int numDiodeBranches,
+            //long int numDiodeBranches,
             const std::map<std::string, int> &nodeMap
     );
 

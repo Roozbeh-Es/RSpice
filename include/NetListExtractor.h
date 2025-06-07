@@ -17,7 +17,7 @@ private:
     long int numVoltageSources_;
     long int numInductors_;
     long int numEquations_;
-    long int numDiodes_;
+    //long int numDiodes_;
     SimulationParameters simulationParameters_;
 
     //temp vector to hold our elements before indexing them
@@ -72,9 +72,9 @@ public:
         return numInductors_;
     }
 
-    [[nodiscard]] long int getNumDiodes() const {
+    /*[[nodiscard]] long int getNumDiodes() const {
         return numDiodes_;
-    }
+    }*/
 
     [[nodiscard]] long int getNumEquations() const {
         return numEquations_;

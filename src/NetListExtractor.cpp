@@ -112,7 +112,7 @@ void NetListExtractor::clear() {
     numVoltageSources_ = 0;
     numInductors_ = 0;
     numEquations_ = 0;
-    numDiodes_ = 0;
+    //numDiodes_ = 0;
     nodeNameToIndex_.clear();
     elements_.clear();
 }
@@ -200,7 +200,7 @@ void NetListExtractor::parseDiode(const std::vector<std::string> &tokens) {
     std::string node2Name = tokens[2];
     long double forwardVoltage = extractValueFromString(tokens[3]);
     this->rawElements_.push_back(std::make_unique<Diode>(name, node1Name, node2Name, forwardVoltage));
-    numDiodes_++;
+    //numDiodes_++;
     std::cout << "NetListExtractor: Parsed Diode: " << name << "with forward Voltage : " << forwardVoltage  << std::endl;
 }
 
@@ -564,11 +564,11 @@ void NetListExtractor::performSizingAndIndexing() {
             voltageSource_ptr->setVoltageSourceEquationIndex(voltageSourceIndex++);
         } else if (auto inductor_ptr = dynamic_cast<Inductor *>(element_ptr.get())) {
             inductor_ptr->setInductorEquationIndex(inductorIndex++);
-        } else if (auto diode_ptr = dynamic_cast<Diode *>(element_ptr.get())) {
+        }/* else if (auto diode_ptr = dynamic_cast<Diode *>(element_ptr.get())) {
             diode_ptr->setEquationIndex(diodeIndex++);
-        }
+        }*/
     }
 
-    numEquations_ = numNodes_ + numInductors_ + numVoltageSources_ + numDiodes_;
+    numEquations_ = numNodes_ + numInductors_ + numVoltageSources_; // + numDiodes_;
     elements_ = std::move(rawElements_);
 }

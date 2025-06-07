@@ -1,34 +1,37 @@
 #include "Diode.h"
 #include "iostream"
 
+constexpr double IS_ = 1e-14;
+constexpr double N_ = 1.0;
+constexpr double VT_ = 0.02585;
 
 void Diode::DCStamp(N_Vector y, N_Vector F) {
-    sunrealtype* y_data = N_VGetArrayPointer(y);
-    sunrealtype* F_data = N_VGetArrayPointer(F);
+    sunrealtype *y_data = N_VGetArrayPointer(y);
+    sunrealtype *F_data = N_VGetArrayPointer(F);
 
-    sunrealtype V_anode   = (this->node1Index_ == 0) ? 0.0 : y_data[this->node1Index_ - 1];
-    sunrealtype V_cathode = (this->node2Index_ == 0) ? 0.0 : y_data[this->node2Index_ - 1];
-    double Vd = V_anode - V_cathode;
+    sunrealtype Vp = (node1Index_ == 0) ? 0.0 : y_data[node1Index_ - 1];
+    sunrealtype Vn = (node2Index_ == 0) ? 0.0 : y_data[node2Index_ - 1];
+    sunrealtype Vd = Vp - Vn;
 
-    // Numerical limiting to prevent floating point overflow from std::exp().
-    // This is a standard practice in SPICE simulators.
-    double Vd_limited = std::min(Vd, forwardVoltage_ + 0.2); // Limit voltage to slightly above V_fwd
+    const sunrealtype V_limit = 100.0;
+    if (Vd > V_limit) Vd = V_limit;
+    if (Vd < -V_limit) Vd = -V_limit;
 
-    // Calculate diode current using the SHIFTED Shockley Diode Equation
-    double Id = IS_ * (std::exp((Vd_limited - forwardVoltage_) / (N_ * VT_)) - 1.0);
+    sunrealtype exp_term = std::exp(Vd / (N_ * VT_));
+    sunrealtype I = IS_ * (exp_term - 1.0);
+    sunrealtype G = (IS_ / (N_ * VT_)) * exp_term;
+    sunrealtype Ieq = I - G * Vd;
 
-    // Stamp current into KCL equations.
-    // Current Id flows from anode (node 1) to cathode (node 2).
-    // For KCL (sum of currents leaving = 0), current enters the anode and leaves the cathode.
-    if (this->node1Index_ != 0) {
-        F_data[this->node1Index_ - 1] -= Id; // Current ENTERS the anode
+    if (node1Index_ != 0) {
+        F_data[node1Index_ - 1] += Ieq;
     }
-    if (this->node2Index_ != 0) {
-        F_data[this->node2Index_ - 1] += Id; // Current LEAVES the cathode
+    if (node2Index_ != 0) {
+        F_data[node2Index_ - 1] -= Ieq;
     }
 }
 
-void Diode::ResidualStamp(sunrealtype t, N_Vector y, N_Vector yp, N_Vector F_Residual)  {
+
+
+void Diode::ResidualStamp(sunrealtype t, N_Vector y, N_Vector yp, N_Vector F_Residual) {
     std::cout << "boop!" << std::endl;
 }
-

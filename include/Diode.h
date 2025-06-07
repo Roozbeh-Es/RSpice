@@ -6,8 +6,10 @@
 
 class Diode : public Element {
 public:
-    Diode(const std::string& name, const std::string& anode, const std::string& cathode,
-          double forwardVoltage = 0.7, double IS = 1e-14, double N = 1.0);
+    Diode(const std::string &name, const std::string &anode, const std::string &cathode,
+          double forwardVoltage, double IS = 1e-14, double N = 1.0) : Element(name, cathode, anode),
+                                                                      forwardVoltage_(forwardVoltage), IS_(IS), N_(N) {
+    }
 
     ~Diode() final = default;
 
@@ -21,7 +23,7 @@ public:
 private:
     const double forwardVoltage_;
     const double IS_; // Saturation Current
-    const double N_;  // Ideality Factor
+    const double N_; // Ideality Factor
     const double VT_ = 0.02585; // Thermal Voltage at room temperature (~26mV)
 };
 

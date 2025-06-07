@@ -8,7 +8,7 @@ Circuit::Circuit(
     long int numNonGroundNodes,
     long int numVoltageSources,
     long int numInductors,
-    long int numDiodes,
+    //long int numDiodes,
     const std::map<std::string, int> &nodeMap
 ) : elements_(std::move(circuitElements)),
     simulationParameters_(simParams),
@@ -16,8 +16,8 @@ Circuit::Circuit(
     numEquations_(numEquations),
     numNonGroundNodes_(numNonGroundNodes),
     numVoltageSources_(numVoltageSources),
-    numInductors_(numInductors),
-    numDiodes_(numDiodes) {
+    numInductors_(numInductors)
+    /*numDiodes_(numDiodes)*/ {
     int flag = SUNContext_Create(SUN_COMM_NULL, &suncntx_);
     if (flag != 0) {
         suncntx_ = nullptr;
