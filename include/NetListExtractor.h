@@ -43,6 +43,10 @@ private:
 
     void parseVCCS(const std::vector<std::string>& tokens);
 
+    void parseCCVS(const std::vector<std::string>& tokens);
+
+    void parseCCCS(const std::vector<std::string>& tokens);
+
     void parseCurrentSource(const std::vector<std::string> &tokens);
 
     void parseTransient(const std::vector<std::string> &tokens);

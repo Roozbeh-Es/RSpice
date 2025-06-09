@@ -15,6 +15,8 @@
 #include "Diode.h"
 #include "VCVS.h"
 #include "VCCS.h"
+#include "CCVS.h"
+#include "CCCS.h"
 
 NetListExtractor::NetListExtractor(std::string filePath)
     : filePath_(std::move(filePath)) {
@@ -74,17 +76,23 @@ std::string trim(const std::string &line) {
 }
 
 long double extractValueFromString(const std::string &value) {
-    long int i = 0;
+    size_t i = 0;
+
+    if (value[i] == '+' || value[i] == '-') {
+        i++;
+    }
+
     while (i < value.size() && (isdigit(value[i]) || value[i] == '.')) {
         i++;
     }
+
     long double numberPart = std::stold(value.substr(0, i));
     std::string suffixPart = value.substr(i);
 
     for (auto &ch: suffixPart) {
-        //toupper is a part of C and it expects only positive char values
         ch = static_cast<char>(std::toupper(static_cast<unsigned char>(ch)));
     }
+
     if (suffixPart == "T") {
         numberPart *= 1e12;
     } else if (suffixPart == "G") {
@@ -333,6 +341,28 @@ void NetListExtractor::parseVCVS(const std::vector<std::string> &tokens) {
     std::cout << "NetListExtractor: Parsed VCVS: " << name << std::endl;
 }
 
+void NetListExtractor::parseCCVS(const std::vector<std::string> &tokens) {
+    if (tokens.size() < 5) {
+        throw std::runtime_error("CCVS" + tokens[0] + " has insufficient  parameters");
+    }
+
+    const std::string &name = tokens[0];
+    const std::string &out_p_node = tokens[1];
+    const std::string &out_n_node = tokens[2];
+    const std::string &VSensorName = tokens[3];
+    double gain = extractValueFromString(tokens[4]);
+
+    rawElements_.push_back(std::make_unique<CCVS>(
+        name,
+        out_p_node,
+        out_n_node,
+        VSensorName,
+        gain
+    ));
+    this->numVoltageSources_++;
+    std::cout << "NetListExtractor: Parsed CCVS: " << name << std::endl;
+}
+
 
 void NetListExtractor::parseCurrentSource(const std::vector<std::string> &tokens) {
     std::string name = tokens[0];
@@ -438,10 +468,28 @@ void NetListExtractor::parseVCCS(const std::vector<std::string> &tokens) {
 
     double gain = extractValueFromString(tokens[5]);
     rawElements_.push_back(std::make_unique<VCCS>(name,
-                                               out_p_node, out_n_node, control_p_node, control_n_node, gain
+                                                  out_p_node, out_n_node, control_p_node, control_n_node, gain
     ));
     std::cout << "NetListExtractor: Parsed VCCS: " << name << std::endl;
+}
 
+void NetListExtractor::parseCCCS(const std::vector<std::string> &tokens) {
+    if (tokens.size() < 5) {
+        throw std::runtime_error("CCCS " + tokens[0] + " has insufficient parameters. Expected 5 tokens. ");
+    }
+    const std::string &name = tokens[0];
+    const std::string &out_p_node = tokens[1];
+    const std::string &out_n_node = tokens[2];
+    const std::string &VSensorName = tokens[3];
+    double gain = extractValueFromString(tokens[4]);
+
+    rawElements_.push_back(std::make_unique<CCCS>(name,
+                                                  out_p_node,
+                                                  out_n_node,
+                                                  VSensorName,
+                                                  gain
+    ));
+    std::cout << "NetListExtractor: Parsed CCCS: " << name << std::endl;
 }
 
 
@@ -517,7 +565,13 @@ void NetListExtractor::parseElementLine(const std::string &elementToken, const s
             break;
         case 'G':
             parseVCCS(tokens);
-        break;
+            break;
+        case 'H':
+            parseCCVS(tokens);
+            break;
+        case 'F':
+            parseCCCS(tokens);
+            break;
         default:
             std::cout << "NetListExtractor: Element type '" << typeChar << "' with name '" << elementToken <<
                     "' not yet supported for detailed parsing or is a sub-circuit." << std::endl;
@@ -631,6 +685,43 @@ void NetListExtractor::performSizingAndIndexing() {
             voltageSource_ptr->setVoltageSourceEquationIndex(voltageSourceIndex++);
         } else if (auto inductor_ptr = dynamic_cast<Inductor *>(element_ptr.get())) {
             inductor_ptr->setInductorEquationIndex(inductorIndex++);
+        }
+    }
+
+    std::map<std::string, Element *> nameToElementMap;
+    for (const auto &el_ptr: rawElements_) {
+        nameToElementMap[el_ptr->getName()] = el_ptr.get();
+    }
+
+    for (const auto &el_ptr: rawElements_) {
+        if (auto ccvs_ptr = dynamic_cast<CCVS *>(el_ptr.get())) {
+            std::string sensorName = ccvs_ptr->getSensorName();
+
+            if (nameToElementMap.find(sensorName) == nameToElementMap.end()) {
+                throw std::runtime_error(
+                    "CCVS '" + ccvs_ptr->getName() + "' references a non-existent voltage source '" + sensorName +
+                    "'.");
+            }
+
+            Element *sensorElement = nameToElementMap.at(sensorName);
+            if (auto vs_sensor_ptr = dynamic_cast<AbstractVoltageSource *>(sensorElement)) {
+                int control_idx = vs_sensor_ptr->getVoltageSourceCurrentIndex();
+                ccvs_ptr->setVSensorIndex(control_idx);
+            } else {
+                throw std::runtime_error(
+                    "CCVS '" + ccvs_ptr->getName() + "' must be controlled by the current through a voltage source. '" +
+                    sensorName + "' is not a voltage source.");
+            }
+        } else if (auto cccs_ptr = dynamic_cast<CCCS*>(el_ptr.get())) { // CORRECTED LOGIC FOR CCCS
+            std::string sensorName = cccs_ptr->getSensorName();
+            if (nameToElementMap.find(sensorName) == nameToElementMap.end()) {
+                throw std::runtime_error("CCCS '" + cccs_ptr->getName() + "' references non-existent source '" + sensorName + "'.");
+            }
+            if (auto vs_sensor = dynamic_cast<AbstractVoltageSource*>(nameToElementMap.at(sensorName))) {
+                cccs_ptr->setVSensorIndex(vs_sensor->getVoltageSourceCurrentIndex());
+            } else {
+                throw std::runtime_error("CCCS '" + cccs_ptr->getName() + "' must be controlled by the current through a voltage source.");
+            }
         }
     }
 

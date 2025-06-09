@@ -22,9 +22,9 @@ public:
 
 private:
     const double forwardVoltage_;
-    const double IS_; // Saturation Current
-    const double N_; // Ideality Factor
-    const double VT_ = 0.02585; // Thermal Voltage at room temperature (~26mV)
+    const double IS_;
+    const double N_;
+    const double VT_ = 0.02585;
 };
 
 #endif // DIODE_H
