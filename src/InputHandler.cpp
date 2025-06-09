@@ -15,6 +15,38 @@ public:
         : name(n), Node1(n1), Node2(n2) {}
     virtual ~Element() = default;
 };
+class Analysis{
+    public:
+    std::string Type;
+    virtual ~Analysis() = default;
+};
+class DCSweep: public Analysis{
+    public:
+    std::string SourceName;
+    double startVal, endVal, Increment;
+    DCSweep(const std::string& source, double start, double end, double inc)
+        : SourceName(source), startVal(start), endVal(end), Increment(inc) {
+        Type = "DCSweep";
+    }
+};
+class Transient: public Analysis{
+    public:
+    std::string SourceName;
+    double startTime, endTime, timeStep, timeStart;
+    Transient(const std::string& source, double start, double end, double step, double startTime = 0)
+        : SourceName(source), startTime(start), endTime(end), timeStep(step), timeStart(startTime) {
+        Type = "Transient";
+    }
+};
+class OP: public Analysis{
+    public:
+    std::string SourceName;
+    OP(const std::string& source)
+        : SourceName(source) {
+        Type = "OP";
+    }
+};
+
 
 class Resistor : public Element {
 public:
@@ -94,26 +126,29 @@ public:
 
 class CCCS : public Element {
 public:
-    std::string ctrlSourceName;
+    std::string ctrlNode1;
+    std::string ctrlNode2;
     double value;
     double gain;
     CCCS(const std::string& n, const std::string& n1, const std::string& n2,
-         const std::string& csn, double v, double g)
-        : Element(n, n1, n2), ctrlSourceName(csn), value(v), gain(g) {}
+         const std::string& cn1, const std::string& cn2, double v, double g)
+        : Element(n, n1, n2), ctrlNode1(cn1), ctrlNode2(cn2), value(v), gain(g) {}
 };
 
 class CCVS : public Element {
 public:
-    std::string ctrlSourceName;
+    std::string ctrlNode1;
+    std::string ctrlNode2;
     double value;
     double gain;
     CCVS(const std::string& n, const std::string& n1, const std::string& n2,
-         const std::string& csn, double v, double g)
-        : Element(n, n1, n2), ctrlSourceName(csn), value(v), gain(g) {}
+         const std::string& cn1, const std::string& cn2, double v, double g)
+        : Element(n, n1, n2), ctrlNode1(cn1), ctrlNode2(cn2), value(v), gain(g) {}
 };
 std::vector<std::unique_ptr<Element>> elements;
 std::vector<std::string> GroundNodes;
 std::string FileName;
+std::unique_ptr<Analysis> analysis = nullptr;
 class OpenError: std::exception{
     const char* what() const noexcept override {
         return "An error occurred in InputHandler";
@@ -203,6 +238,62 @@ public:
         return message.c_str();
     }
 };
+class ResistorNotFoundError: public std::exception {
+    std::string message;
+public:
+    explicit ResistorNotFoundError(const std::string& name) : message("Error: Cannot delete Resistor; component not found") {}
+    const char* what() const noexcept override {
+        return message.c_str();
+    }
+};
+class CapacitorNotFoundError: public std::exception {
+    std::string message;
+public:
+    explicit CapacitorNotFoundError(const std::string& name) : message("Error: Cannot delete Capacitor; component not found") {}
+    const char* what() const noexcept override {
+        return message.c_str();
+    }
+};
+class InductorNotFoundError: public std::exception {
+    std::string message;
+public:
+    explicit InductorNotFoundError(const std::string& name) : message("Error: Cannot delete Inductor; component not found") {}
+    const char* what() const noexcept override {
+        return message.c_str();
+    }
+};
+class DiodeNotFoundError: public std::exception {
+    std::string message;
+public:
+    explicit DiodeNotFoundError(const std::string& name) : message("Error: Cannot delete Diode; component not found") {}
+    const char* what() const noexcept override {
+        return message.c_str();
+    }
+};
+class GroundNodeNotFoundError: public std::exception {
+    std::string message;
+public:
+    explicit GroundNodeNotFoundError(const std::string& name) : message("Error: Cannot delete Ground Node; component not found") {}
+    const char* what() const noexcept override {
+        return message.c_str();
+    }
+};
+class VoltageSourceNotFoundError: public std::exception {
+    std::string message;
+public:
+    explicit VoltageSourceNotFoundError(const std::string& name) : message("Error: Cannot delete Voltage Source; component not found") {}
+    const char* what() const noexcept override {
+        return message.c_str();
+    }
+};
+class CurrentSourceNotFoundError: public std::exception {
+    std::string message;
+public:
+    explicit CurrentSourceNotFoundError(const std::string& name) : message("Error: Cannot delete Current Source; component not found") {}
+    const char* what() const noexcept override {
+        return message.c_str();
+    }
+};
 void Menu(){
 menu_start:
     std::cout << "Welcome to the RASpice Menu!" << std::endl;
@@ -244,15 +335,14 @@ menu_start:
         std::ofstream file(filename);
 
         if(!file){
-            throw NewError();
+            std::cout << "Error: Could not create file." << std::endl;
+            goto menu_start;
         }
         else{
             std::cout << "File created successfully." << std::endl;
-            std::ofstream recent("..\\settings\\recents.txt", std::ios::app);
-            
-            recent << filename + "\n";
+            std::ofstream recent("../settings/recents.txt", std::ios::app);
+            recent << filename << "\n";
             FileName = filename;
-
         }
         return;
     }
@@ -265,8 +355,8 @@ void InputHandler(){
     std::regex addInductor(R"(add L(\S+) (\S+) (\S+) (\S+))");
     std::regex addDiode(R"(add D(\S+) (\S+) (\S+) (\S+))");
     std::regex addGND(R"(add GND (\S+))");
-    std::regex addDCVoltageSource(R"(add V(\S+) (\S+) (\S+))");
-    std::regex addDCCurrentSource(R"(add I(\S+) (\S+) (\S+))");
+    std::regex addDCVoltageSource(R"(add V(\S+) (\S+) (\S+) ([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?))");
+    std::regex addDCCurrentSource(R"(add I(\S+) (\S+) (\S+) ([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?))");
     std::regex addACVoltageSource(R"(add V(\S+) (\S+) (\S+) SIN\((\S+) (\S+) (\S+)\))");
     std::regex addACCurrentSource(R"(add I(\S+) (\S+) (\S+) SIN\((\S+) (\S+) (\S+)\))");
     std::regex addPulseVoltageSource(R"(add V(\S+) (\S+) (\S+) PULSE (\S+) \((\S+)\))");
@@ -281,12 +371,22 @@ void InputHandler(){
     std::regex deleteGND(R"(delete GND (\S+))");
     std::regex deleteVoltageSource(R"(delete V(\S+))");
     std::regex deleteCurrentSource(R"(delete I(\S+))");
+    std::regex addTransient(R"(^\.TRAN\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)(?:\s+(\d+(?:\.\d+)?))?(?:\s+(\d+(?:\.\d+)?))?$)");
+    std::regex addDCSweep(R"(^\.DC\s+(\S+)\s+([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)\s+([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)\s+([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)$)");
+    std::regex addOP(R"(^\.OP\s*$)");
+    std::cin.get();
     while(true){
         try{
         std::string input;
         std::getline(std::cin, input);
-        if(input == "exit"){
-            std::cout << "Exiting..." << std::endl;
+        if(input == "END"){
+            if(GroundNodes.empty()) {
+                throw std::runtime_error("Error: No ground nodes defined");
+            }
+            if(analysis == nullptr) {
+                throw std::runtime_error("Error: No analysis defined");
+            }
+            std::cout << "Getting Things Ready..." << std::endl;
             break;
         }
         if(std::regex_match(input, addResistor)){
@@ -295,15 +395,12 @@ void InputHandler(){
             std::string name = match[1];
             std::string valueStr = match[4];
             int pow = 0;
-            // Check for suffix and set pow accordingly
             std::smatch suffixMatch;
-            // Match number followed by optional suffix (u, k, Mega, n, p)
             std::regex suffixRegex(R"(^([-+]?\d*\.?\d+)([uUnNkK]|Mega|MEGA|n|N|p|P)?$)");
             if (std::regex_match(valueStr, suffixMatch, suffixRegex)) {
                 valueStr = suffixMatch[1];
                 std::string suffix = suffixMatch[2];
                 if (!suffix.empty()) {
-                    // Remove the suffix character(s) from the end of valueStr if present
                     valueStr = valueStr.substr(0, valueStr.size());
                 }
                 if (suffix == "u" || suffix == "U") pow = -6;
@@ -335,15 +432,12 @@ void InputHandler(){
             std::string name = match[1];
             std::string valueStr = match[4];
             int pow = 0;
-            // Check for suffix and set pow accordingly
             std::smatch suffixMatch;
-            // Match number followed by optional suffix (u, k, Mega, n, p)
             std::regex suffixRegex(R"(^([-+]?\d*\.?\d+)([uUnNkK]|Mega|MEGA|n|N|p|P)?$)");
             if (std::regex_match(valueStr, suffixMatch, suffixRegex)) {
                 valueStr = suffixMatch[1];
                 std::string suffix = suffixMatch[2];
                 if (!suffix.empty()) {
-                    // Remove the suffix character(s) from the end of valueStr if present
                     valueStr = valueStr.substr(0, valueStr.size());
                 }
                 if (suffix == "u" || suffix == "U") pow = -6;
@@ -375,15 +469,12 @@ void InputHandler(){
             std::string name =match[1];
             std::string valueStr = match[4];
             int pow = 0;
-            // Check for suffix and set pow accordingly
             std::smatch suffixMatch;
-            // Match number followed by optional suffix (u, k, Mega, n, p)
             std::regex suffixRegex(R"(^([-+]?\d*\.?\d+)([uUnNkK]|Mega|MEGA|n|N|p|P)?$)");
             if (std::regex_match(valueStr, suffixMatch, suffixRegex)) {
                 valueStr = suffixMatch[1];
                 std::string suffix = suffixMatch[2];
                 if (!suffix.empty()) {
-                    // Remove the suffix character(s) from the end of valueStr if present
                     valueStr = valueStr.substr(0, valueStr.size());
                 }
                 if (suffix == "u" || suffix == "U") pow = -6;
@@ -475,8 +566,181 @@ void InputHandler(){
             double phase = std::stod(match[6]);
             elements.push_back(std::make_unique<ACVoltageSource>(name, match[2], match[3], value, frequency, phase));
         }
-        
-            
+        else if(std::regex_match(input, addVCCS)) {
+            std::smatch match;
+            std::regex_search(input, match, addVCCS);
+            std::string name = match[1];
+            name.insert(0, "G");
+            auto it = std::find_if(elements.begin(), elements.end(), [&name](const std::unique_ptr<Element>& elem) {
+                return elem->name == name;
+            });
+            if(it != elements.end()) {
+                throw DCVoltSameError(name);
+            }
+            double value = std::stod(match[6]);
+            double gain = std::stod(match[7]);
+            elements.push_back(std::make_unique<VCCS>(name, match[2], match[3], match[4], match[5], value, gain));
+        }
+        else if(std::regex_match(input, addVCVS)) {
+            std::smatch match;
+            std::regex_search(input, match, addVCVS);
+            std::string name = match[1];
+            name.insert(0, "E");
+            auto it = std::find_if(elements.begin(), elements.end(), [&name](const std::unique_ptr<Element>& elem) {
+                return elem->name == name;
+            });
+            if(it != elements.end()) {
+                throw DCVoltSameError(name);
+            }
+            double value = std::stod(match[6]);
+            double gain = std::stod(match[7]);
+            elements.push_back(std::make_unique<VCVS>(name, match[2], match[3], match[4], match[5], value, gain));
+        }
+        else if(std::regex_match(input, addCCCS)) {
+            std::smatch match;
+            std::regex_search(input, match, addCCCS);
+            std::string name = match[1];
+            name.insert(0, "F");
+            auto it = std::find_if(elements.begin(), elements.end(), [&name](const std::unique_ptr<Element>& elem) {
+                return elem->name == name;
+            });
+            if(it != elements.end()) {
+                throw DCCurrentSameError(name);
+            }
+            double value = std::stod(match[6]);
+            double gain = std::stod(match[7]);
+            elements.push_back(std::make_unique<CCCS>(name, match[2], match[3], match[4], match[5], value, gain));
+
+        }
+        else if(std::regex_match(input, deleteResistor)){
+            std::smatch match;
+            std::regex_search(input, match, deleteResistor);
+            std::string name = match[1];
+            name.insert(0, "R");
+            auto it = std::find_if(elements.begin(), elements.end(), [&name](const std::unique_ptr<Element>& elem) {
+                return elem->name == name;
+            });
+            if(it != elements.end()) {
+                elements.erase(it);
+            }
+            else {
+                throw ResistorNotFoundError(name);
+            }
+        }
+        else if(std::regex_match(input, deleteCapacitor)){
+            std::smatch match;
+            std::regex_search(input, match, deleteCapacitor);
+            std::string name = match[1];
+            name.insert(0, "C");
+            auto it = std::find_if(elements.begin(), elements.end(), [&name](const std::unique_ptr<Element>& elem) {
+                return elem->name == name;
+            });
+            if(it != elements.end()) {
+                elements.erase(it);
+            }
+            else {
+                throw CapacitorNotFoundError(name);
+            }
+        }
+        else if(std::regex_match(input, deleteInductor)){
+            std::smatch match;
+            std::regex_search(input, match, deleteInductor);
+            std::string name = match[1];
+            name.insert(0, "I");
+            auto it = std::find_if(elements.begin(), elements.end(), [&name](const std::unique_ptr<Element>& elem) {
+                return elem->name == name;
+            });
+            if(it != elements.end()) {
+                elements.erase(it);
+            }
+            else {
+                throw InductorNotFoundError(name);
+            }
+        }
+        else if(std::regex_match(input, deleteDiode)){
+            std::smatch match;
+            std::regex_search(input, match, deleteDiode);
+            std::string name = match[1];
+            name.insert(0, "D");
+            auto it = std::find_if(elements.begin(), elements.end(), [&name](const std::unique_ptr<Element>& elem) {
+                return elem->name == name;
+            });
+            if(it != elements.end()) {
+                elements.erase(it);
+            }
+            else {
+                throw DiodeNotFoundError(name);
+            }
+        }
+        else if(std::regex_match(input, deleteGND)){
+            std::smatch match;
+            std::regex_search(input, match, deleteGND);
+            std::string node = match[1];
+            auto it = std::find(GroundNodes.begin(), GroundNodes.end(), node);
+            if(it != GroundNodes.end()) {
+                GroundNodes.erase(it);
+            } else {
+                throw GroundNodeNotFoundError(node);
+            }
+        }
+        else if(std::regex_match(input, deleteVoltageSource)){
+            std::smatch match;
+            std::regex_search(input, match, deleteVoltageSource);
+            std::string name = match[1];
+            name.insert(0, "V");
+            auto it = std::find_if(elements.begin(), elements.end(), [&name](const std::unique_ptr<Element>& elem) {
+                return elem->name == name;
+            });
+            if(it != elements.end()) {
+                elements.erase(it);
+            }
+            else {
+                throw VoltageSourceNotFoundError(name);
+            }
+        }
+        else if(std::regex_match(input, deleteCurrentSource)){
+            std::smatch match;
+            std::regex_search(input, match, deleteCurrentSource);
+            std::string name = match[1];
+            name.insert(0, "I");
+            auto it = std::find_if(elements.begin(), elements.end(), [&name](const std::unique_ptr<Element>& elem) {
+                return elem->name == name;
+            });
+            if(it != elements.end()) {
+                elements.erase(it);
+            }
+            else {
+                throw CurrentSourceNotFoundError(name);
+            }
+        }
+        else if(std::regex_match(input, addTransient)){
+            std::smatch match;
+            std::regex_search(input, match, addTransient);
+            double tstep = std::stod(match[1]);
+            double tstop = std::stod(match[2]);
+            double tstart = match[3].matched ? std::stod(match[3]) : 0.0;
+            double tmaxstep = match[4].matched ? std::stod(match[4]) : 0.0;
+            analysis = std::make_unique<Transient>("", tstart, tstop, tstep, tmaxstep);
+        }
+        else if(std::regex_match(input, addDCSweep)){
+            std::smatch match;
+            std::regex_search(input, match, addDCSweep);
+            std::string source = match[1];
+            double start = std::stod(match[2]);
+            double end = std::stod(match[3]);
+            double inc = std::stod(match[4]);
+            analysis = std::make_unique<DCSweep>(source, start, end, inc);
+        }
+        else if(std::regex_match(input, addOP)){
+            std::smatch match;
+            std::regex_search(input, match, addOP);
+            std::string source = match[1];
+            analysis = std::make_unique<OP>("");  
+        }
+        else {
+            std::cout << "Error: Syntax error" << std::endl;
+            continue;
+        }
     }
     catch(const std::exception& e) {
             std::cout << e.what() << std::endl;
@@ -484,10 +748,93 @@ void InputHandler(){
         }
     }
 }
+void OutputFile(){
+    std::ofstream out(FileName);
 
+    auto powToSuffix = [](int pow) -> std::string {
+        switch (pow) {
+            case 3:  return "k";
+            case 6:  return "Mega";
+            case -6: return "u";
+            case -9: return "n";
+            case -12: return "p";
+            default: return "";
+        }
+    };
+    if (!out) {
+        std::cerr << "Error: Could not open output file." << std::endl;
+        return;
+    }
+    for (auto& elem : elements) {
+        if (std::find(GroundNodes.begin(), GroundNodes.end(), elem->Node1) != GroundNodes.end()) {
+            elem->Node1 = "0";
+        }
+        if (std::find(GroundNodes.begin(), GroundNodes.end(), elem->Node2) != GroundNodes.end()) {
+            elem->Node2 = "0";
+        }
+    }
+    for (const auto& elem : elements) {
+        if (auto r = dynamic_cast<Resistor*>(elem.get())) {
+            out << r->name << " " << r->Node1 << " " << r->Node2 << " " << r->value;
+            if (r->pow != 0) out << powToSuffix(r->pow);
+            out << std::endl;
+        } else if (auto c = dynamic_cast<Capacitor*>(elem.get())) {
+            out << c->name << " " << c->Node1 << " " << c->Node2 << " " << c->value;
+            if (c->pow != 0) out << powToSuffix(c->pow);
+            out << std::endl;
+        } else if (auto l = dynamic_cast<Inductor*>(elem.get())) {
+            out << l->name << " " << l->Node1 << " " << l->Node2 << " " << l->value;
+            if (l->pow != 0) out << powToSuffix(l->pow);
+            out << std::endl;
+        } else if (auto d = dynamic_cast<Diode*>(elem.get())) {
+            out << d->name << " " << d->Node1 << " " << d->Node2 << " " << d->type << std::endl;
+        } else if (auto v = dynamic_cast<DCVoltageSource*>(elem.get())) {
+            out << v->name << " " << v->Node1 << " " << v->Node2 << " DC " << v->value << std::endl;
+        } else if (auto i = dynamic_cast<DCCurrentSource*>(elem.get())) {
+            out << i->name << " " << i->Node1 << " " << i->Node2 << " DC " << i->value << std::endl;
+        } else if (auto vac = dynamic_cast<ACVoltageSource*>(elem.get())) {
+            out << vac->name << " " << vac->Node1 << " " << vac->Node2
+                << " SIN(" << vac->value << " " << vac->frequency << " " << vac->phase << ")" << std::endl;
+        } else if (auto vccs = dynamic_cast<VCCS*>(elem.get())) {
+            out << vccs->name << " " << vccs->Node1 << " " << vccs->Node2 << " "
+                << vccs->ctrlNode1 << " " << vccs->ctrlNode2 << " " << vccs->gain << std::endl;
+        } else if (auto vcvs = dynamic_cast<VCVS*>(elem.get())) {
+            out << vcvs->name << " " << vcvs->Node1 << " " << vcvs->Node2 << " "
+                << vcvs->ctrlNode1 << " " << vcvs->ctrlNode2 << " " << vcvs->gain << std::endl;
+        } else if (auto cccs = dynamic_cast<CCCS*>(elem.get())) {
+            out << cccs->name << " " << cccs->Node1 << " " << cccs->Node2 << " "
+                << cccs->ctrlNode1 << " " << cccs->ctrlNode2 << " " << cccs->gain << std::endl;
+        } else if (auto ccvs = dynamic_cast<CCVS*>(elem.get())) {
+            out << ccvs->name << " " << ccvs->Node1 << " " << ccvs->Node2 << " "
+                << ccvs->ctrlNode1 << " " << ccvs->ctrlNode2 << " " << ccvs->gain << std::endl;
+        }
+    }
+
+
+
+    if (analysis->Type == "DCSweep") {
+            auto* dc = dynamic_cast<DCSweep*>(analysis.get());
+            out << ".DC " << dc->SourceName << " " << dc->startVal << " " << dc->endVal << " " << dc->Increment << std::endl;
+            out << ".DC " << dc->SourceName << " " << dc->startVal << " " << dc->endVal << " " << dc->Increment << std::endl;
+        } else if (analysis->Type == "Transient") {
+            auto* tr = dynamic_cast<Transient*>(analysis.get());
+            out << ".TRAN " << tr->timeStep << " " << tr->endTime;
+            if (tr->timeStart != 0.0) out << " " << tr->timeStart;
+            if (tr->timeStart != 0.0) out << " " << tr->timeStart;
+            out << std::endl;
+        } else if (analysis->Type == "OP") {
+            out << ".OP" << std::endl;
+        }
+    
+
+    out << ".END" << std::endl;
+    out.close();
+    std::cout << "Netlist written to " << FileName << std::endl;
+}
 int main(){
     try {
         InputHandler();
+        OutputFile();
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
     }
