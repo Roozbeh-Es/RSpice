@@ -17,6 +17,7 @@
 #include "VCCS.h"
 #include "CCVS.h"
 #include "CCCS.h"
+#include "set"
 
 NetListExtractor::NetListExtractor(std::string filePath)
     : filePath_(std::move(filePath)) {
@@ -649,6 +650,25 @@ void NetListExtractor::parseOP(const std::vector<std::string> &tokens) {
 
 
 void NetListExtractor::performSizingAndIndexing() {
+
+    //zero ground check
+    std::set<std::string> uniqueNodeNames;
+    bool groundNodeInUse = false;
+    for (const auto& elPtr : rawElements_) {
+        for (const std::string& name : elPtr->getNodeNames()) {
+            uniqueNodeNames.insert(name);
+            std::string upperName = name;
+            std::transform(upperName.begin(), upperName.end(), upperName.begin(), ::toupper);
+            if (name == "0" || upperName == "GND") {
+                groundNodeInUse = true;
+            }
+        }
+    }
+
+    if (!rawElements_.empty() && !groundNodeInUse) {
+        throw std::runtime_error("Fatal Error: The circuit has no ground node. Please connect a component to 'GND' or '0'.");
+    }
+
     nodeNameToIndex_.clear();
     nodeNameToIndex_["GND"] = 0;
     nodeNameToIndex_["0"] = 0;
@@ -661,6 +681,7 @@ void NetListExtractor::performSizingAndIndexing() {
             }
         }
     }
+
     for (const auto &element_ptr: rawElements_) {
         element_ptr->setNode1Index(nodeNameToIndex_[element_ptr->getNode1Name()]);
         element_ptr->setNode2Index(nodeNameToIndex_[element_ptr->getNode2Name()]);
@@ -678,7 +699,6 @@ void NetListExtractor::performSizingAndIndexing() {
 
     int inductorIndex = numNodes_ + numVoltageSources_;
     int voltageSourceIndex = numNodes_;
-    int diodeIndex = numNodes_ + numVoltageSources_ + numInductors_;
 
     for (const auto &element_ptr: rawElements_) {
         if (auto voltageSource_ptr = dynamic_cast<AbstractVoltageSource *>(element_ptr.get())) {
@@ -712,7 +732,7 @@ void NetListExtractor::performSizingAndIndexing() {
                     "CCVS '" + ccvs_ptr->getName() + "' must be controlled by the current through a voltage source. '" +
                     sensorName + "' is not a voltage source.");
             }
-        } else if (auto cccs_ptr = dynamic_cast<CCCS*>(el_ptr.get())) { // CORRECTED LOGIC FOR CCCS
+        } else if (auto cccs_ptr = dynamic_cast<CCCS*>(el_ptr.get())) {
             std::string sensorName = cccs_ptr->getSensorName();
             if (nameToElementMap.find(sensorName) == nameToElementMap.end()) {
                 throw std::runtime_error("CCCS '" + cccs_ptr->getName() + "' references non-existent source '" + sensorName + "'.");
@@ -725,6 +745,7 @@ void NetListExtractor::performSizingAndIndexing() {
         }
     }
 
-    numEquations_ = numNodes_ + numInductors_ + numVoltageSources_; // + numDiodes_;
+
+    numEquations_ = numNodes_ + numInductors_ + numVoltageSources_;
     elements_ = std::move(rawElements_);
 }
