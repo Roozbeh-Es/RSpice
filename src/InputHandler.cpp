@@ -305,7 +305,7 @@ menu_start:
     std::cin >> choice;
     if(choice == 1){
         std::ifstream file("../settings/recents.txt");
-        if( file.peek() == std::ifstream::traits_type::eof()) {
+        if (!file.is_open() || file.peek() == std::ifstream::traits_type::eof()) {
             std::cout << "No recent files found." << std::endl;
         }else{
         std::cout << "Recent files:" << std::endl;
