@@ -47,6 +47,10 @@ private:
 
     void parseCCCS(const std::vector<std::string>& tokens);
 
+    void parseVPulse(const std::vector<std::string>& tokens);
+
+    void parseIPulse(const std::vector<std::string>& tokens);
+
     void parseCurrentSource(const std::vector<std::string> &tokens);
 
     void parseTransient(const std::vector<std::string> &tokens);

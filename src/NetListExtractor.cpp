@@ -17,6 +17,8 @@
 #include "VCCS.h"
 #include "CCVS.h"
 #include "CCCS.h"
+#include "VPulse.h"
+#include "IPulse.h"
 #include "set"
 
 NetListExtractor::NetListExtractor(std::string filePath)
@@ -132,15 +134,11 @@ bool NetListExtractor::loadAndProcessNetList() {
     clear();
     std::ifstream netListFile(filePath_);
 
-    // --- Add this for debugging ---
     std::cout << "[DEBUG] Trying to open file with path: \"" << filePath_ << "\"" << std::endl;
-    // --- End debug code ---
 
     if (!netListFile.is_open()) {
         std::cerr << "Failed to open file " << filePath_ << std::endl;
 
-        // --- ADD THIS LINE ---
-        // This will print the OS-level reason for the failure, e.g., "No such file or directory"
         perror("OS-level reason");
 
         return false;
@@ -161,15 +159,13 @@ bool NetListExtractor::loadAndProcessNetList() {
 }
 
 void NetListExtractor::parseResistor(const std::vector<std::string> &tokens) {
-    // tokens[0] is name, tokens[1] is node1, tokens[2] is node2, tokens[3] is value
     std::string name = tokens[0];
     if (tokens.size() < 4) {
-        // Basic check, R L C usually need 4 tokens.
         throw std::runtime_error("Error: Resistor " + name + " has insufficient parameters. Expected at least 4.\n");
     }
     std::string node1Name = tokens[1];
     std::string node2Name = tokens[2];
-    long double resistance = extractValueFromString(tokens[3]); // Use 'this->' for clarity or omit if not ambiguous
+    long double resistance = extractValueFromString(tokens[3]);
 
     this->rawElements_.push_back(std::make_unique<Resistor>(name, node1Name, node2Name, resistance));
     std::cout << "NetListExtractor: Parsed Resistor: " << name << std::endl;
@@ -255,7 +251,6 @@ void NetListExtractor::parseVoltageSource(const std::vector<std::string> &tokens
                                          what() + "\n";
                     std::cerr << errMsg;
                     throw std::runtime_error(errMsg);
-                    // Re-throw to stop processing this line/file or handle as per strategy
                 }
             }
         }
@@ -279,7 +274,6 @@ void NetListExtractor::parseVoltageSource(const std::vector<std::string> &tokens
                 "Error: Insufficient parameters for SIN source " + name + ". Need at least VO, VA, FREQ.\n");
         }
     } else {
-        // DC Source
         long double dcValue;
         if (paramStartTokenUpper == "DC") {
             if (tokens.size() < 5) {
@@ -363,6 +357,35 @@ void NetListExtractor::parseCCVS(const std::vector<std::string> &tokens) {
     this->numVoltageSources_++;
     std::cout << "NetListExtractor: Parsed CCVS: " << name << std::endl;
 }
+
+void NetListExtractor::parseVPulse(const std::vector<std::string> &tokens) {
+    if (tokens.size() < 10) {
+        throw std::runtime_error("VPulse" + tokens[0] + " has insufficient  parameters");
+    }
+    const std::string &name = tokens[0];
+    const std::string &out_p_node = tokens[1];
+    const std::string &out_n_node = tokens[2];
+    const double initialVoltage = extractValueFromString(tokens[3]);
+    double VON = extractValueFromString(tokens[4]);
+    double timeDelay = extractValueFromString(tokens[5]);
+    double riseTime = extractValueFromString(tokens[6]);
+    double fallTime = extractValueFromString(tokens[7]);
+    double TOn = extractValueFromString(tokens[8]);
+    double timePeriod = extractValueFromString(tokens[9]);
+
+    rawElements_.push_back(std::make_unique<VPulse>(name,
+                                                    out_p_node,
+                                                    out_n_node,
+                                                    initialVoltage,
+                                                    VON,
+                                                    timeDelay,
+                                                    riseTime,
+                                                    fallTime,
+                                                    TOn,
+                                                    timePeriod));
+    this->numVoltageSources_++;
+}
+
 
 
 void NetListExtractor::parseCurrentSource(const std::vector<std::string> &tokens) {
@@ -493,6 +516,35 @@ void NetListExtractor::parseCCCS(const std::vector<std::string> &tokens) {
     std::cout << "NetListExtractor: Parsed CCCS: " << name << std::endl;
 }
 
+void NetListExtractor::parseIPulse(const std::vector<std::string> &tokens) {
+    if (tokens.size() < 10) {
+        throw std::runtime_error("IPulse" + tokens[0] + " has insufficient  parameters");
+    }
+    const std::string &name = tokens[0];
+    const std::string &out_p_node = tokens[1];
+    const std::string &out_n_node = tokens[2];
+    const double initialVoltage = extractValueFromString(tokens[3]);
+    double VON = extractValueFromString(tokens[4]);
+    double timeDelay = extractValueFromString(tokens[5]);
+    double riseTime = extractValueFromString(tokens[6]);
+    double fallTime = extractValueFromString(tokens[7]);
+    double TOn = extractValueFromString(tokens[8]);
+    double timePeriod = extractValueFromString(tokens[9]);
+
+
+    rawElements_.push_back(std::make_unique<IPulse>(name,
+                                                    out_p_node,
+                                                    out_n_node,
+                                                    initialVoltage,
+                                                    VON,
+                                                    timeDelay,
+                                                    riseTime,
+                                                    fallTime,
+                                                    TOn,
+                                                    timePeriod));
+}
+
+
 
 void NetListExtractor::parseLine(const std::string &line) {
     std::stringstream ss(line);
@@ -573,6 +625,11 @@ void NetListExtractor::parseElementLine(const std::string &elementToken, const s
         case 'F':
             parseCCCS(tokens);
             break;
+        case 'Z':
+            parseVPulse(tokens);
+        break;
+        case 'X':
+            parseIPulse(tokens);
         default:
             std::cout << "NetListExtractor: Element type '" << typeChar << "' with name '" << elementToken <<
                     "' not yet supported for detailed parsing or is a sub-circuit." << std::endl;
@@ -650,12 +707,11 @@ void NetListExtractor::parseOP(const std::vector<std::string> &tokens) {
 
 
 void NetListExtractor::performSizingAndIndexing() {
-
     //zero ground check
     std::set<std::string> uniqueNodeNames;
     bool groundNodeInUse = false;
-    for (const auto& elPtr : rawElements_) {
-        for (const std::string& name : elPtr->getNodeNames()) {
+    for (const auto &elPtr: rawElements_) {
+        for (const std::string &name: elPtr->getNodeNames()) {
             uniqueNodeNames.insert(name);
             std::string upperName = name;
             std::transform(upperName.begin(), upperName.end(), upperName.begin(), ::toupper);
@@ -666,7 +722,8 @@ void NetListExtractor::performSizingAndIndexing() {
     }
 
     if (!rawElements_.empty() && !groundNodeInUse) {
-        throw std::runtime_error("Fatal Error: The circuit has no ground node. Please connect a component to 'GND' or '0'.");
+        throw std::runtime_error(
+            "Fatal Error: The circuit has no ground node. Please connect a component to 'GND' or '0'.");
     }
 
     nodeNameToIndex_.clear();
@@ -732,15 +789,17 @@ void NetListExtractor::performSizingAndIndexing() {
                     "CCVS '" + ccvs_ptr->getName() + "' must be controlled by the current through a voltage source. '" +
                     sensorName + "' is not a voltage source.");
             }
-        } else if (auto cccs_ptr = dynamic_cast<CCCS*>(el_ptr.get())) {
+        } else if (auto cccs_ptr = dynamic_cast<CCCS *>(el_ptr.get())) {
             std::string sensorName = cccs_ptr->getSensorName();
             if (nameToElementMap.find(sensorName) == nameToElementMap.end()) {
-                throw std::runtime_error("CCCS '" + cccs_ptr->getName() + "' references non-existent source '" + sensorName + "'.");
+                throw std::runtime_error(
+                    "CCCS '" + cccs_ptr->getName() + "' references non-existent source '" + sensorName + "'.");
             }
-            if (auto vs_sensor = dynamic_cast<AbstractVoltageSource*>(nameToElementMap.at(sensorName))) {
+            if (auto vs_sensor = dynamic_cast<AbstractVoltageSource *>(nameToElementMap.at(sensorName))) {
                 cccs_ptr->setVSensorIndex(vs_sensor->getVoltageSourceCurrentIndex());
             } else {
-                throw std::runtime_error("CCCS '" + cccs_ptr->getName() + "' must be controlled by the current through a voltage source.");
+                throw std::runtime_error(
+                    "CCCS '" + cccs_ptr->getName() + "' must be controlled by the current through a voltage source.");
             }
         }
     }

@@ -1,5 +1,6 @@
 #include "Circuit.h"
 #include <algorithm>
+#include <iomanip>
 
 Circuit::Circuit(
     std::vector<std::unique_ptr<Element> > circuitElements,
@@ -16,8 +17,7 @@ Circuit::Circuit(
     numEquations_(numEquations),
     numNonGroundNodes_(numNonGroundNodes),
     numVoltageSources_(numVoltageSources),
-    numInductors_(numInductors)
-    /*numDiodes_(numDiodes)*/ {
+    numInductors_(numInductors) {
     int flag = SUNContext_Create(SUN_COMM_NULL, &suncntx_);
     if (flag != 0) {
         suncntx_ = nullptr;
@@ -39,23 +39,11 @@ Circuit::~Circuit() {
     std::cout << "Circuit object destroyed, SUNDIALS context freed" << std::endl;
 }
 
-// In Circuit.cpp
-
-// In Circuit.cpp
-
-#include "DCVoltageSource.h" // Ensure this is included at the top
-
-// In Circuit.cpp
 
 void Circuit::getInitialConditions(N_Vector y_vec, N_Vector yp_vec) {
-    // --- This function provides an initial GUESS for the solver ---
-
-    // Always set the initial guess for the main variables (y) to zero.
-    // This is a safe starting point.
     N_VConst(0.0, y_vec);
 
-    // Only set the derivatives vector (yp) if it's provided.
-    // For DC analysis, it will be nullptr. For transient, it will be a valid vector.
+
     if (yp_vec != nullptr) {
         N_VConst(0.0, yp_vec);
     }
@@ -63,8 +51,6 @@ void Circuit::getInitialConditions(N_Vector y_vec, N_Vector yp_vec) {
     sunrealtype *y_data = N_VGetArrayPointer(y_vec);
     std::cout << "Circuit: Setting smart initial conditions..." << std::endl;
 
-    // The rest of your smart initial guess logic remains the same.
-    // It correctly provides a better starting guess for the DC operating point.
     for (const auto &el: elements_) {
         if (auto vs = dynamic_cast<const DCVoltageSource *>(el.get())) {
             int p_node_idx = vs->getNode1();
@@ -86,13 +72,10 @@ std::vector<std::string> Circuit::getOrderedUnknownNames() const {
     std::vector<std::string> names;
     names.reserve(numEquations_);
 
-    // 1. Non-ground node voltages
-    // We need a reverse map from MNA index (0 to K-1) to node name
-    // Node indices are 1 to K. MNA indices are 0 to K-1.
+
     std::map<int, std::string> mnaIndexToNodeName;
     for (const auto &pair: nodeMap_) {
         if (pair.second != 0) {
-            // Not ground
             mnaIndexToNodeName[pair.second - 1] = pair.first; // map MNA KCL_row_idx to name
         }
     }
@@ -105,8 +88,7 @@ std::vector<std::string> Circuit::getOrderedUnknownNames() const {
         }
     }
 
-    // 2. Currents through voltage sources
-    // Need to iterate elements and find voltage sources in their MNA index order
+
     std::vector<const AbstractVoltageSource *> sortedVS;
     for (const auto &el: elements_) {
         if (auto vs = dynamic_cast<const AbstractVoltageSource *>(el.get())) {
@@ -121,7 +103,6 @@ std::vector<std::string> Circuit::getOrderedUnknownNames() const {
     }
 
 
-    // 3. Currents through inductors
     std::vector<const Inductor *> sortedL;
     for (const auto &el: elements_) {
         if (auto l = dynamic_cast<const Inductor *>(el.get())) {
@@ -139,8 +120,6 @@ std::vector<std::string> Circuit::getOrderedUnknownNames() const {
 }
 
 void Circuit::printTransientResults(sunrealtype t_current, N_Vector y_vec) {
-    // This should use getOrderedUnknownNames() to print headers and then values
-    // For now, a simple print:
     std::cout << t_current;
     sunrealtype *y_data = N_VGetArrayPointer(y_vec);
     std::vector<std::string> names = getOrderedUnknownNames();
@@ -151,7 +130,6 @@ void Circuit::printTransientResults(sunrealtype t_current, N_Vector y_vec) {
 }
 
 void Circuit::populateIdVector(N_Vector id) {
-    // Start by assuming everything is algebraic (0.0)
     N_VConst(0.0, id);
     sunrealtype *id_data = N_VGetArrayPointer(id);
 
@@ -183,8 +161,6 @@ void Circuit::populateIdVector(N_Vector id) {
     std::cout << "Circuit: ID vector populated for DAE solver.\n";
 }
 
-// Add this new function to Circuit.cpp
-#include <iomanip> // Make sure this header is included at the top of Circuit.cpp
 
 void Circuit::printDCResults(N_Vector y) const {
     std::cout << "\n--- DC Operating Point Results ---" << std::endl;
