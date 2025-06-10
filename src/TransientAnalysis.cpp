@@ -107,26 +107,21 @@ void TransientAnalysis::solve(Circuit &circuit) {
     }
     std::cout << std::endl;
 
-    // Print initial conditions at t=0
     circuit.printTransientResults(t_current, y_vec);
 
-    // Main simulation loop using IDA_ONE_STEP
     while (t_current < parameters_.stopTime_) {
-        // Tell the solver to take just ONE internal, adaptive step.
-        // We still provide stopTime as a hard limit for this single step.
+
         int flag = IDASolve(ida_mem, parameters_.stopTime_, &t_current, y_vec, yp_vec, IDA_ONE_STEP);
         if (flag < 0) { // On any fatal error, stop.
             check_sundials_flag(flag, "IDASolve");
             break;
         }
 
-        // After a successful internal step, t_current has been advanced.
-        // We now check if we have passed the next desired output time.
+
         while (t_out_next + output_step <= t_current) {
             t_out_next += output_step;
 
-            // To get the solution *exactly* at t_out_next, we use IDA's
-            // built-in interpolation function, IDAGetDky.
+
             N_Vector y_interpolated = N_VNew_Serial(num_equations, sunctx);
             if (check_sundials_flag(IDAGetDky(ida_mem, t_out_next, 0, y_interpolated), "IDAGetDky")) {
                 circuit.printTransientResults(t_out_next, y_interpolated);
@@ -135,7 +130,6 @@ void TransientAnalysis::solve(Circuit &circuit) {
         }
     }
 
-    // Ensure the final time point is printed if the loop didn't land on it exactly
     if (t_current < parameters_.stopTime_) {
          circuit.printTransientResults(parameters_.stopTime_, y_vec);
     }

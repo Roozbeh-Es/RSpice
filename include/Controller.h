@@ -8,10 +8,9 @@ class Controller {
 public:
     Controller();
 
-    int start();
+    void start(std::string netListFilePath);
 
 private:
-    std::string getFilePathFromUser();
 };
 
 #endif // CONTROLLER_H
