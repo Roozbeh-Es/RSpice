@@ -35,21 +35,25 @@ private:
 
     void parseInductor(const std::vector<std::string> &tokens);
 
-    void parseDiode(const std::vector<std::string>& tokens);
+    void parseDiode(const std::vector<std::string> &tokens);
 
     void parseVoltageSource(const std::vector<std::string> &tokens);
 
-    void parseVCVS(const std::vector<std::string>& tokens);
+    void parseVCVS(const std::vector<std::string> &tokens);
 
-    void parseVCCS(const std::vector<std::string>& tokens);
+    void parseVCCS(const std::vector<std::string> &tokens);
 
-    void parseCCVS(const std::vector<std::string>& tokens);
+    void parseCCVS(const std::vector<std::string> &tokens);
 
-    void parseCCCS(const std::vector<std::string>& tokens);
+    void parseCCCS(const std::vector<std::string> &tokens);
 
-    void parseVPulse(const std::vector<std::string>& tokens);
+    void parseVPulse(const std::vector<std::string> &tokens);
 
-    void parseIPulse(const std::vector<std::string>& tokens);
+    void parseIPulse(const std::vector<std::string> &tokens);
+
+    void parseVDelta(const std::vector<std::string> &tokens);
+
+    void parseIDelta(const std::vector<std::string> &tokens);
 
     void parseCurrentSource(const std::vector<std::string> &tokens);
 
@@ -57,7 +61,7 @@ private:
 
     void parseDC(const std::vector<std::string> &tokens);
 
-    void parseOP(const std::vector<std::string>& tokens);
+    void parseOP(const std::vector<std::string> &tokens);
 
 public:
     NetListExtractor(std::string filePath);
@@ -82,9 +86,6 @@ public:
         return numInductors_;
     }
 
-    /*[[nodiscard]] long int getNumDiodes() const {
-        return numDiodes_;
-    }*/
 
     [[nodiscard]] long int getNumEquations() const {
         return numEquations_;

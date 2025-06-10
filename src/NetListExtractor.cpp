@@ -256,7 +256,6 @@ void NetListExtractor::parseVoltageSource(const std::vector<std::string> &tokens
         }
 
         if (sineParams.size() >= 3) {
-            // vo, va, freq are essential
             long double offset = sineParams[0];
             long double amplitude = sineParams[1];
             long double frequency = sineParams[2];
@@ -267,7 +266,7 @@ void NetListExtractor::parseVoltageSource(const std::vector<std::string> &tokens
             this->rawElements_.emplace_back(std::make_unique<SinusoidalVoltageSource>(
                 name, node1Name, node2Name,
                 offset, amplitude, frequency, timeDelay, dampingFactor, phase));
-            this->numVoltageSources_++; // Accessing member variable
+            this->numVoltageSources_++;
             std::cout << "NetListExtractor: Parsed Sinusoidal Voltage Source: " << name << std::endl;
         } else {
             throw std::runtime_error(
@@ -285,7 +284,7 @@ void NetListExtractor::parseVoltageSource(const std::vector<std::string> &tokens
                 std::string errMsg = "Error parsing DC value for " + name + " after DC keyword (token: " + tokens[4] +
                                      "): " + e.what() + "\n";
                 std::cerr << errMsg;
-                return; // Stop parsing this element, move to next line
+                return;
             }
         } else {
             try {
@@ -296,14 +295,13 @@ void NetListExtractor::parseVoltageSource(const std::vector<std::string> &tokens
                 std::cerr << errMsg;
                 std::cout << "Note: This might also be an AC specification or other unhandled VSource parameter." <<
                         std::endl;
-                return; // Stop parsing this element, move to next line
+                return;
             }
         }
         this->rawElements_.emplace_back(std::make_unique<DCVoltageSource>(name, node1Name, node2Name, dcValue));
-        this->numVoltageSources_++; // Accessing member variable
+        this->numVoltageSources_++;
         std::cout << "NetListExtractor: Parsed DC Voltage Source: " << name << " Value: " << dcValue << std::endl;
     }
-    // No 'break;' needed at the end of a function
 }
 
 void NetListExtractor::parseVCVS(const std::vector<std::string> &tokens) {
@@ -384,6 +382,8 @@ void NetListExtractor::parseVPulse(const std::vector<std::string> &tokens) {
                                                     TOn,
                                                     timePeriod));
     this->numVoltageSources_++;
+    std::cout << "parsed VPulse element: " << name << std::endl;
+
 }
 
 
@@ -430,7 +430,6 @@ void NetListExtractor::parseCurrentSource(const std::vector<std::string> &tokens
         }
 
         if (sineParams.size() >= 3) {
-            // io, ia, freq are essential
             long double offset = sineParams[0];
             long double amplitude = sineParams[1];
             long double frequency = sineParams[2];
@@ -441,14 +440,12 @@ void NetListExtractor::parseCurrentSource(const std::vector<std::string> &tokens
             this->rawElements_.emplace_back(std::make_unique<SinusoidalCurrentSource>(
                 name, node1Name, node2Name,
                 offset, amplitude, frequency, timeDelay, dampingFactor, phase));
-            // this->numCurrentSources_++; // Assuming you add/have this member for consistency
             std::cout << "NetListExtractor: Parsed Sinusoidal Current Source: " << name << std::endl;
         } else {
             throw std::runtime_error(
                 "Error: Insufficient parameters for SIN source " + name + ". Need at least IO, IA, FREQ.\n");
         }
     } else {
-        // DC Current Source
         long double dcValue;
         if (paramStartTokenUpper == "DC") {
             if (tokens.size() < 5) {
@@ -460,7 +457,7 @@ void NetListExtractor::parseCurrentSource(const std::vector<std::string> &tokens
                 std::string errMsg = "Error parsing DC value for " + name + " after DC keyword (token: " + tokens[4] +
                                      "): " + e.what() + "\n";
                 std::cerr << errMsg;
-                return; // Stop parsing this element
+                return;
             }
         } else {
             try {
@@ -471,7 +468,7 @@ void NetListExtractor::parseCurrentSource(const std::vector<std::string> &tokens
                 std::cerr << errMsg;
                 std::cout << "Note: This might also be an AC specification or other unhandled ISource parameter." <<
                         std::endl;
-                return; // Stop parsing this element
+                return;
             }
         }
         this->rawElements_.emplace_back(std::make_unique<DCCurrentSource>(name, node1Name, node2Name, dcValue));
@@ -542,7 +539,96 @@ void NetListExtractor::parseIPulse(const std::vector<std::string> &tokens) {
                                                     fallTime,
                                                     TOn,
                                                     timePeriod));
+    std::cout << "parsed IPulse element: " << name << std::endl;
 }
+
+
+void NetListExtractor::parseVDelta(const std::vector<std::string> &tokens) {
+    if (tokens.size() < 3) {
+        throw std::runtime_error("Special Dirac source requires a name and 2 node names.");
+    }
+
+    const std::string& name = tokens[0];
+    const std::string& node1 = tokens[1];
+    const std::string& node2 = tokens[2];
+
+
+    const double total_duration = 2e-9;
+
+    const double rise_time = total_duration / 2.0;
+    const double fall_time = total_duration / 2.0;
+    const double pulse_width = 0.0;
+
+
+    const double peak_voltage = 2.0 / total_duration;
+
+    const double initial_value = 0.0;
+    const double time_delay = 0.0;
+    const double period = 1.0;
+
+    std::cout << "NetListExtractor: Parsed Dirac Delta '" << name
+              << "' (approximated as a " << total_duration * 1e9 << "ns, "
+              << peak_voltage * 1e-9 << "GV triangular pulse)." << std::endl;
+
+    rawElements_.push_back(std::make_unique<VPulse>(
+        name,
+        node1,
+        node2,
+        initial_value,
+        peak_voltage,
+        time_delay,
+        rise_time,
+        fall_time,
+        pulse_width,
+        period
+    ));
+
+    this->numVoltageSources_++;
+}
+
+void NetListExtractor::parseIDelta(const std::vector<std::string> &tokens) {
+    if (tokens.size() < 3) {
+        throw std::runtime_error("Special Dirac source requires a name and 2 node names.");
+    }
+
+    const std::string& name = tokens[0];
+    const std::string& node1 = tokens[1];
+    const std::string& node2 = tokens[2];
+
+
+    const double total_duration = 2e-9;
+
+    const double rise_time = total_duration / 2.0;
+    const double fall_time = total_duration / 2.0;
+    const double pulse_width = 0.0;
+
+
+    const double peak_voltage = 2.0 / total_duration;
+
+    const double initial_value = 0.0;
+    const double time_delay = 0.0;
+    const double period = 1.0;
+
+    std::cout << "NetListExtractor: Parsed Dirac Delta '" << name
+              << "' (approximated as a " << total_duration * 1e9 << "ns, "
+              << peak_voltage * 1e-9 << "GV triangular pulse)." << std::endl;
+
+    rawElements_.push_back(std::make_unique<IPulse>(
+        name,
+        node1,
+        node2,
+        initial_value,
+        peak_voltage,
+        time_delay,
+        rise_time,
+        fall_time,
+        pulse_width,
+        period
+    ));
+
+    this->numVoltageSources_++;
+}
+
 
 
 
@@ -552,7 +638,6 @@ void NetListExtractor::parseLine(const std::string &line) {
     std::vector<std::string> tokens;
     std::string token;
 
-    // just to make sure
     if (!(ss >> firstToken)) {
         throw std::runtime_error("line is empty after string stream");
     }
@@ -583,12 +668,9 @@ void NetListExtractor::parseLine(const std::string &line) {
 
 void NetListExtractor::parseElementLine(const std::string &elementToken, const std::vector<std::string> &tokens) {
     if (tokens.empty()) {
-        // Should ideally be checked before calling
         throw std::runtime_error("parseElementLine called with empty tokens.");
     }
 
-    // elementToken is effectively tokens[0] and is the element's name (e.g., "R1", "VSOURCE")
-    // The type character is the first character of this token.
     char typeChar = static_cast<char>(std::toupper(static_cast<unsigned char>(elementToken[0])));
 
     std::cout << "NetListExtractor: Dispatching parsing for type '" << typeChar << "' with name '" << elementToken <<
@@ -630,6 +712,12 @@ void NetListExtractor::parseElementLine(const std::string &elementToken, const s
         break;
         case 'X':
             parseIPulse(tokens);
+        case 'A' :
+            parseVDelta(tokens);
+        break;
+        case 'B':
+            parseIDelta(tokens);
+        break;
         default:
             std::cout << "NetListExtractor: Element type '" << typeChar << "' with name '" << elementToken <<
                     "' not yet supported for detailed parsing or is a sub-circuit." << std::endl;

@@ -165,21 +165,15 @@ void Circuit::populateIdVector(N_Vector id) {
 void Circuit::printDCResults(N_Vector y) const {
     std::cout << "\n--- DC Operating Point Results ---" << std::endl;
 
-    // 1. Get the ordered list of unknown variable names.
     std::vector<std::string> unknownNames = this->getOrderedUnknownNames();
 
-    // 2. Get the pointer to the final solution data.
     const sunrealtype *y_data = N_VGetArrayPointer(y);
 
-    // 3. Loop through the results and print each one descriptively.
     for (long int i = 0; i < this->numEquations_; ++i) {
-        // Get the name for the current variable (unknown)
         std::string name = (i < unknownNames.size()) ? unknownNames[i] : "UNKNOWN_" + std::to_string(i);
 
-        // Get the calculated value
         sunrealtype value = y_data[i];
 
-        // Determine the unit based on the variable name
         std::string unit = " ";
         if (!name.empty()) {
             if (name[0] == 'V') {
@@ -189,7 +183,6 @@ void Circuit::printDCResults(N_Vector y) const {
             }
         }
 
-        // Print the formatted line
         std::cout << "  " << std::left << std::setw(15) << name
                 << " = " << std::right << std::setw(12) << std::scientific << value
                 << unit << std::endl;
