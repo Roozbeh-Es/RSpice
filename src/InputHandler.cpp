@@ -5,6 +5,7 @@
 #include <fstream>
 #include <vector>
 #include <memory>
+#include <set>
 
 class Element {
 public:
@@ -294,9 +295,26 @@ public:
         return message.c_str();
     }
 };
-void Menu(){
-menu_start:
+class OldNodeNotFound: public std::exception {
+    std::string message;
+public:
+    explicit OldNodeNotFound(const std::string& name) : message("ERROR: Node " + name + " does not exist in the circuit") {}
+    const char* what() const noexcept override {
+        return message.c_str();
+    }
+};
+class SameNodeName: public std::exception {
+    std::string message;
+public:
+    explicit SameNodeName(const std::string& name) : message("ERROR: Node " + name + " already exists in the circuit") {}
+    const char* what() const noexcept override {
+        return message.c_str();
+    }
+};
+bool Menu(){
+
     std::cout << "Welcome to the RASpice Menu!" << std::endl;
+menu_start:
     std::cout << "1. Open File" << std::endl;
     std::cout << "2. New File" << std::endl;
     std::cout << "3. Exit" << std::endl;
@@ -325,7 +343,7 @@ menu_start:
             std::cout << "File opened successfully." << std::endl;
         }
         FileName = filename;
-        return;
+        return true;
         
     }
     else if(choice == 2){
@@ -344,12 +362,19 @@ menu_start:
             recent << filename << "\n";
             FileName = filename;
         }
-        return;
+        return true;
+    }
+    else if(choice == 3){
+        return false;
+    }
+    else{
+        std::cout << "Syntax Error!" << std::endl;
     }
 }
 
-void InputHandler(){
-    Menu();
+bool InputHandler(){
+    if(!Menu())
+        return false;
     std::regex addResistor(R"(add R(\S+) (\S+) (\S+) (\S+))");
     std::regex addCapacitor(R"(add C(\S+) (\S+) (\S+) (\S+))");
     std::regex addInductor(R"(add L(\S+) (\S+) (\S+) (\S+))");
@@ -373,6 +398,10 @@ void InputHandler(){
     std::regex deleteCurrentSource(R"(delete I(\S+))");
     std::regex addTransient(R"(^\.TRAN\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)(?:\s+(\d+(?:\.\d+)?))?(?:\s+(\d+(?:\.\d+)?))?$)");
     std::regex addDCSweep(R"(^\.DC\s+(\S+)\s+([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)\s+([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)\s+([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)$)");
+    std::regex showNodes(R"(\s*\.nodes\s*)");
+    std::regex showElements(R"(\s*\.list (\S+)\s*)");
+    std::regex showAllElements(R"(\s*\.list\s*)");
+    std::regex renameNode(R"(\s*\.rename node (\S+) (\S+)\s*)");
     std::regex addOP(R"(^\.OP\s*$)");
     std::cin.get();
     while(true){
@@ -737,6 +766,70 @@ void InputHandler(){
             std::string source = match[1];
             analysis = std::make_unique<OP>("");  
         }
+        else if(std::regex_match(input, showNodes)){
+            std::cout << "Ground Nodes: ";
+            for (const auto& node : GroundNodes) {
+                std::cout << node << " ";
+            }
+            std::cout << std::endl;
+            std::set<std::string> uniqueNodes;
+            for (const auto& elem : elements) {
+                uniqueNodes.insert(elem->Node1);
+                uniqueNodes.insert(elem->Node2);
+            }
+            std::cout << "Nodes in the circuit: ";
+            for (const auto& node : uniqueNodes) {
+                std::cout << node << " ";
+            }
+            std::cout << std::endl;
+        }
+        else if(std::regex_match(input, showElements)){
+            std::smatch match;
+            std::regex_search(input, match, showElements);
+            std::string type = match[1];
+            std::cout << "Elements of type " << type << " in the circuit:" << std::endl;
+            for (const auto& elem : elements) {
+                if (!elem->name.empty() && elem->name[0] == type[0]) {
+                    std::cout << elem->name << " (" << elem->Node1 << ", " << elem->Node2 << ")" << std::endl;
+                }
+            }
+        }
+        else if(std::regex_match(input, showAllElements)){
+            std::cout << "All elements in the circuit:" << std::endl;
+            for (const auto& elem : elements) {
+                std::cout << elem->name << " (" << elem->Node1 << ", " << elem->Node2 << ")" << std::endl;
+            }
+        }
+        else if(std::regex_match(input, renameNode)){
+            std::smatch match;
+            std::regex_search(input, match, renameNode);
+            std::string oldName = match[1];
+            std::string newName = match[2];
+            // Check if newName already exists as a node in any element
+            bool newNameExists = std::any_of(elements.begin(), elements.end(), [&newName](const std::unique_ptr<Element>& elem) {
+                return elem->Node1 == newName || elem->Node2 == newName;
+            });
+            if (newNameExists) {
+                throw SameNodeName(newName);
+            }
+            // Check if oldName exists in any element
+            bool oldNameFound = false;
+            for (auto& elem : elements) {
+                if (elem->Node1 == oldName) {
+                    elem->Node1 = newName;
+                    oldNameFound = true;
+                }
+                if (elem->Node2 == oldName) {
+                    elem->Node2 = newName;
+                    oldNameFound = true;
+                }
+            }
+            if (oldNameFound) {
+                std::cout << "Node renamed from " << oldName << " to " << newName << std::endl;
+            } else {
+                throw OldNodeNotFound(oldName);
+            }
+        }
         else {
             std::cout << "Error: Syntax error" << std::endl;
             continue;
@@ -747,6 +840,8 @@ void InputHandler(){
             continue;
         }
     }
+    return true;
+
 }
 void OutputFile(){
     std::ofstream out(FileName);
@@ -833,8 +928,8 @@ void OutputFile(){
 }
 int main(){
     try {
-        InputHandler();
-        OutputFile();
+        if(InputHandler())
+            OutputFile();
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
     }
